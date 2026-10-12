@@ -22,13 +22,11 @@
         "title": "Prognose",
         "data": {
           "weather_entities": "Wetter-Entitäten (in Prioritätsreihenfolge)",
-          "solcast_today": "Solcast-Prognose heute",
-          "solcast_tomorrow": "Solcast-Prognose morgen"
+          "pv_forecast": "PV-Prognose (Helios)"
         },
         "data_description": {
           "weather_entities": "Optional. Brauchen eine stündliche Vorhersage; die erste, die liefert, wird genutzt.",
-          "solcast_today": "Optional. Solcast-Sensor mit dem Attribut detailedForecast.",
-          "solcast_tomorrow": "Optional. Nötig für Horizonte über Mitternacht hinaus."
+          "pv_forecast": "Optional. Leistungssensor von Helios Forecast „Power now“ einer Anlage (hat das Attribut forecast)."
         }
       },
       "plant": {
@@ -76,13 +74,11 @@
         "title": "Prognose",
         "data": {
           "weather_entities": "Wetter-Entitäten (in Prioritätsreihenfolge)",
-          "solcast_today": "Solcast-Prognose heute",
-          "solcast_tomorrow": "Solcast-Prognose morgen"
+          "pv_forecast": "PV-Prognose (Helios)"
         },
         "data_description": {
           "weather_entities": "Optional. Brauchen eine stündliche Vorhersage; die erste, die liefert, wird genutzt.",
-          "solcast_today": "Optional. Solcast-Sensor mit dem Attribut detailedForecast.",
-          "solcast_tomorrow": "Optional. Nötig für Horizonte über Mitternacht hinaus."
+          "pv_forecast": "Optional. Leistungssensor von Helios Forecast „Power now“ einer Anlage (hat das Attribut forecast)."
         }
       },
       "plant": {

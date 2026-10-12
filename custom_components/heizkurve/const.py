@@ -13,8 +13,7 @@ CONF_OUTDOOR_FALLBACK = "outdoor_fallback_sensor"
 CONF_ROOM = "room_sensors"
 CONF_TARGET = "target_entity"
 CONF_WEATHER = "weather_entities"
-CONF_SOLCAST_TODAY = "solcast_today"
-CONF_SOLCAST_TOMORROW = "solcast_tomorrow"
+CONF_PV_FORECAST = "pv_forecast"
 CONF_ABS_MIN_FLOW = "absolute_min_flow"
 CONF_ABS_MAX_FLOW = "absolute_max_flow"
 CONF_COMPRESSOR = "compressor_sensor"
@@ -80,9 +79,9 @@ PARAMS: tuple[ParamSpec, ...] = (
               "mdi:arrow-expand-vertical", requires=CONF_WEATHER,
               package_key="prognose_max_abweichung"),
     ParamSpec("solar_max_deduction", 1.0, 0, 5, 0.1, "K", "mdi:weather-sunny",
-              requires=CONF_SOLCAST_TODAY, package_key="solar_abzug_max"),
+              requires=CONF_PV_FORECAST, package_key="solar_abzug_max"),
     ParamSpec("solar_reference", 20, 1, 60, 1, "kWh", "mdi:solar-power",
-              requires=CONF_SOLCAST_TODAY, package_key="solar_referenz"),
+              requires=CONF_PV_FORECAST, package_key="solar_referenz"),
     ParamSpec("integral_time", 24, 0, 72, 1, "h", "mdi:timer-sand",
               requires=CONF_ROOM, package_key="i_zeitkonstante"),
     ParamSpec("integral_max", 2.0, 0, 5, 0.1, "K", "mdi:arrow-collapse-vertical",

@@ -26,9 +26,8 @@ from .const import (
     CONF_MODE_DHW,
     CONF_OUTDOOR,
     CONF_OUTDOOR_FALLBACK,
+    CONF_PV_FORECAST,
     CONF_ROOM,
-    CONF_SOLCAST_TODAY,
-    CONF_SOLCAST_TOMORROW,
     CONF_TARGET,
     CONF_WEATHER,
     DEFAULT_ABS_MAX_FLOW,
@@ -45,8 +44,7 @@ SOURCE_KEYS = (
     CONF_ROOM,
     CONF_TARGET,
     CONF_WEATHER,
-    CONF_SOLCAST_TODAY,
-    CONF_SOLCAST_TOMORROW,
+    CONF_PV_FORECAST,
     CONF_ABS_MIN_FLOW,
     CONF_ABS_MAX_FLOW,
     CONF_COMPRESSOR,
@@ -89,11 +87,10 @@ FORECAST_SCHEMA = vol.Schema(
         vol.Optional(CONF_WEATHER): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="weather", multiple=True)
         ),
-        vol.Optional(CONF_SOLCAST_TODAY): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
-        ),
-        vol.Optional(CONF_SOLCAST_TOMORROW): selector.EntitySelector(
-            selector.EntitySelectorConfig(domain="sensor")
+        vol.Optional(CONF_PV_FORECAST): selector.EntitySelector(
+            selector.EntitySelectorConfig(
+                domain="sensor", integration="helios_forecast"
+            )
         ),
     }
 )

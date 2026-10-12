@@ -25,8 +25,8 @@ from .const import (
     CONF_COMPARISON,
     CONF_COMPRESSOR,
     CONF_HEAT_METER,
+    CONF_PV_FORECAST,
     CONF_ROOM,
-    CONF_SOLCAST_TODAY,
     CONF_WEATHER,
 )
 from .coordinator import HeizkurveConfigEntry, HeizkurveData
@@ -93,11 +93,11 @@ SENSORS: tuple[HeizkurveSensorDescription, ...] = (
         value_fn=lambda d: d.solar_energy,
         native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
         device_class=SensorDeviceClass.ENERGY,
-        requires=CONF_SOLCAST_TODAY,
+        requires=CONF_PV_FORECAST,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     _kelvin("solar_deduction", lambda d: d.solar_deduction,
-            requires=CONF_SOLCAST_TODAY, entity_category=EntityCategory.DIAGNOSTIC),
+            requires=CONF_PV_FORECAST, entity_category=EntityCategory.DIAGNOSTIC),
     _kelvin("integral", lambda d: d.integral, requires=CONF_ROOM,
             entity_category=EntityCategory.DIAGNOSTIC, suggested_display_precision=3),
     _kelvin("comfort_deviation", lambda d: d.comfort_deviation, requires=CONF_ROOM),

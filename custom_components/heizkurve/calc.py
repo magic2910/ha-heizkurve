@@ -101,13 +101,24 @@ def effective_outdoor(
 def solar_energy(
     periods: Iterable[tuple[datetime, float]], now: datetime, horizon_h: int
 ) -> float:
-    """PV energy (kWh) over the horizon from Solcast half-hour periods (kW)."""
-    kwh = 0.0
-    start = now - timedelta(minutes=30)
+    """PV energy (kWh) over the horizon from forecast periods (start, kW).
+
+    Each period lasts until the next one starts (Helios: 15 min); the last
+    one is assumed to be as long as the one before.
+    """
+    ordered = sorted(periods)
     end = now + timedelta(hours=horizon_h)
-    for period_start, pv_kw in periods:
-        if start <= period_start < end:
-            kwh += pv_kw * 0.5
+    kwh = 0.0
+    for idx, (period_start, pv_kw) in enumerate(ordered):
+        if idx + 1 < len(ordered):
+            period_end = ordered[idx + 1][0]
+        elif idx > 0:
+            period_end = period_start + (period_start - ordered[idx - 1][0])
+        else:
+            period_end = period_start + timedelta(minutes=15)
+        overlap = (min(period_end, end) - max(period_start, now)).total_seconds()
+        if overlap > 0:
+            kwh += pv_kw * overlap / 3600
     return round(kwh, 1)
 
 

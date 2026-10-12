@@ -73,10 +73,14 @@ def test_forecast_stats_uses_horizon_and_48h():
     assert stats.max_48h == 48
 
 
-def test_solar_energy_counts_half_hour_periods():
-    periods = [(NOW + timedelta(minutes=30 * i), 2.0) for i in range(-2, 20)]
-    # periods from now - 30 min up to (excluding) now + 2 h: 5 periods * 1 kWh
-    assert calc.solar_energy(periods, NOW, horizon_h=2) == 5.0
+def test_solar_energy_from_quarter_hour_periods():
+    # Helios: 15-min periods in kW (watts / 1000), 2 kW for the whole day
+    periods = [(NOW + timedelta(minutes=15 * i), 2.0) for i in range(-8, 40)]
+    assert calc.solar_energy(periods, NOW, horizon_h=2) == 4.0
+    # a period that started 5 min ago only counts for its remaining 10 min
+    late = NOW + timedelta(minutes=5)
+    assert calc.solar_energy(periods, late, horizon_h=1) == 2.0
+    assert calc.solar_energy([], NOW, horizon_h=2) == 0
     assert calc.solar_deduction(5.0, 20, 1) == 0.2
     assert calc.solar_deduction(50, 20, 1) == 1
     assert calc.solar_deduction(5, 0, 1) == 0

@@ -22,13 +22,11 @@
         "title": "Forecast",
         "data": {
           "weather_entities": "Weather entities (priority order)",
-          "solcast_today": "Solcast forecast today",
-          "solcast_tomorrow": "Solcast forecast tomorrow"
+          "pv_forecast": "PV forecast (Helios)"
         },
         "data_description": {
           "weather_entities": "Optional. Need an hourly forecast; the first one that delivers is used.",
-          "solcast_today": "Optional. Solcast sensor with the detailedForecast attribute.",
-          "solcast_tomorrow": "Optional. Needed for horizons past midnight."
+          "pv_forecast": "Optional. Helios Forecast “Power now” sensor of a plant (has the forecast attribute)."
         }
       },
       "plant": {
@@ -76,13 +74,11 @@
         "title": "Forecast",
         "data": {
           "weather_entities": "Weather entities (priority order)",
-          "solcast_today": "Solcast forecast today",
-          "solcast_tomorrow": "Solcast forecast tomorrow"
+          "pv_forecast": "PV forecast (Helios)"
         },
         "data_description": {
           "weather_entities": "Optional. Need an hourly forecast; the first one that delivers is used.",
-          "solcast_today": "Optional. Solcast sensor with the detailedForecast attribute.",
-          "solcast_tomorrow": "Optional. Needed for horizons past midnight."
+          "pv_forecast": "Optional. Helios Forecast “Power now” sensor of a plant (has the forecast attribute)."
         }
       },
       "plant": {

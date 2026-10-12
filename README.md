@@ -9,7 +9,7 @@ Entstanden aus dem YAML-Paket "Heizkurve v2" für eine Rotex HPSU (ESPHome HPSU 
 - Lineare Heizkurve mit Steigung und Niveau, begrenzt auf Min-/Max-Vorlauf und eine feste Anlagengrenze (z. B. 25 °C bei der Rotex).
 - Effektive Außentemperatur: Mischung aus Messung und Vorhersage der nächsten Stunden, wegen der Trägheit der Fußbodenheizung.
 - Raumkorrektur (P-Anteil) und I-Anteil mit Anti-Windup, der nur läuft, solange die Integration aktiv ist.
-- Solarabzug aus der Solcast-PV-Prognose.
+- Solarabzug aus der PV-Prognose von Helios Forecast.
 - Heizbedarf nach Heizgrenze mit ±0,5 K Hysterese auf dem 48-h-Mittel der Vorhersage.
 - Taktsperre: erkennt taktenden Kompressor (Warmwasser ausgenommen) und gibt eine Pause vor.
 - Störung: meldet, wenn der Sollwert länger als 5 Minuten ungültig ist.
@@ -36,7 +36,7 @@ Ist das YAML-Paket "Heizkurve v2" installiert, übernimmt die Einrichtung dessen
 | Raumtemperatur | nein | Thermostate oder Raumsensoren (z. B. Homematic IP, Zigbee über ZHA oder Zigbee2MQTT, tado), beliebig viele, es zählt der Mittelwert | reine Außentemperaturführung ohne Raumkorrektur und I-Anteil |
 | Zieltemperatur | nein | Helfer Zahl (`input_number`), `number`- oder `sensor`-Entität | eigene Zahl-Entität "Zieltemperatur" |
 | Wettervorhersage | nein | jede `weather`-Entität mit stündlicher Vorhersage, z. B. Met.no, OpenWeatherMap, DWD Weather (HACS), Weather Fusion AI; mehrere in Reihenfolge als Fallback | keine Vorhersage, effektive = gemessene Außentemperatur; Heizbedarf nach aktueller Außentemperatur |
-| PV-Prognose | nein | [Solcast PV Forecast](https://github.com/BJReplay/ha-solcast-solar) (HACS), Sensoren "heute" und "morgen" | kein Solarabzug |
+| PV-Prognose | nein | [Helios Forecast](https://github.com/ReikanYsora/Helios-Forecast) (HACS): der Sensor "Power now" einer Anlage, z. B. `sensor.dach_pv_anlage_power_now`, mit dem Attribut `forecast` (15-Minuten-Werte in Watt) | kein Solarabzug |
 | Kompressorstatus | nein | Binary-Sensor der Wärmepumpe (z. B. ESPHome HPSU CAN) | keine Taktsperre, keine Starts und Laufzeit |
 | Betriebsart | nein | Sensor oder Select der Wärmepumpe mit eigenem Wert für Warmwasser | Warmwasser-Läufe zählen als Starts |
 | Wärmemengenzähler | nein | Energiesensor der Wärmepumpe oder externer Wärmemengenzähler | keine Wärme pro Tag, keine kWh je Heizgradtag |

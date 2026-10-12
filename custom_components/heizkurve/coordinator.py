@@ -31,9 +31,8 @@ from .const import (
     CONF_MODE_DHW,
     CONF_OUTDOOR,
     CONF_OUTDOOR_FALLBACK,
+    CONF_PV_FORECAST,
     CONF_ROOM,
-    CONF_SOLCAST_TODAY,
-    CONF_SOLCAST_TOMORROW,
     CONF_TARGET,
     CONF_WEATHER,
     DEFAULT_ABS_MIN_FLOW,
@@ -141,8 +140,7 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
             CONF_OUTDOOR,
             CONF_OUTDOOR_FALLBACK,
             CONF_TARGET,
-            CONF_SOLCAST_TODAY,
-            CONF_SOLCAST_TOMORROW,
+            CONF_PV_FORECAST,
             CONF_COMPRESSOR,
             CONF_MODE,
             CONF_HEAT_METER,
@@ -347,22 +345,24 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
         ]
         return sum(values) / len(values) if values else None
 
-    def _solcast_periods(self) -> list[tuple[datetime, float]]:
+    def _pv_periods(self) -> list[tuple[datetime, float]]:
+        """Helios forecast: list of {datetime, watts} in the attribute forecast."""
         periods: list[tuple[datetime, float]] = []
-        for key in (CONF_SOLCAST_TODAY, CONF_SOLCAST_TOMORROW):
-            state = self.hass.states.get(self.conf.get(key) or "")
-            if state is None:
+        state = self.hass.states.get(self.conf.get(CONF_PV_FORECAST) or "")
+        if state is None:
+            return periods
+        for item in state.attributes.get("forecast") or []:
+            if not isinstance(item, dict):
                 continue
-            for item in state.attributes.get("detailedForecast") or []:
-                start = item.get("period_start")
-                if isinstance(start, str):
-                    start = dt_util.parse_datetime(start)
-                try:
-                    pv = float(item.get("pv_estimate"))
-                except (TypeError, ValueError):
-                    continue
-                if isinstance(start, datetime):
-                    periods.append((dt_util.as_utc(start), pv))
+            start = item.get("datetime")
+            if isinstance(start, str):
+                start = dt_util.parse_datetime(start)
+            try:
+                watts = float(item.get("watts"))
+            except (TypeError, ValueError):
+                continue
+            if isinstance(start, datetime):
+                periods.append((dt_util.as_utc(start), watts / 1000))
         return periods
 
     def _compressor_heating(self) -> bool | None:
@@ -408,9 +408,9 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
             data.forecast_updated = self._forecast_updated
 
         # Solar.
-        if self.has(CONF_SOLCAST_TODAY):
+        if self.has(CONF_PV_FORECAST):
             data.solar_energy = calc.solar_energy(
-                self._solcast_periods(), now, int(p["forecast_horizon"])
+                self._pv_periods(), now, int(p["forecast_horizon"])
             )
             data.solar_deduction = calc.solar_deduction(
                 data.solar_energy, p["solar_reference"], p["solar_max_deduction"]

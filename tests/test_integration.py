@@ -23,6 +23,7 @@ from custom_components.heizkurve.const import (
     CONF_MODE_DHW,
     CONF_OUTDOOR,
     CONF_OUTDOOR_FALLBACK,
+    CONF_PV_FORECAST,
     CONF_ROOM,
     CONF_TARGET,
     CONF_WEATHER,
@@ -273,6 +274,28 @@ async def test_forecast_from_weather_entity(hass: HomeAssistant, full_entry) -> 
     # T_eff = 0.5 * 10.7 + 0.5 * 5.7 (limited to 10.7 - 5) = 8.2
     assert float(hass.states.get(_entity(hass, "outdoor_effective")).state) == 8.2
     assert hass.states.get(_entity(hass, "heating_demand")).state == "on"
+
+
+async def test_solar_deduction_from_helios(hass: HomeAssistant, full_entry) -> None:
+    start = dt_util.now().replace(minute=0, second=0, microsecond=0)
+    forecast = [
+        {"datetime": (start + timedelta(minutes=15 * i)).isoformat(),
+         "watts": 2000, "p10": None, "p90": None}
+        for i in range(-4, 4 * 48)
+    ]
+    hass.states.async_set("sensor.pv_power_now", "2000", {"forecast": forecast})
+    full_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        full_entry, data={**full_entry.data, CONF_PV_FORECAST: "sensor.pv_power_now"}
+    )
+    await hass.config_entries.async_setup(full_entry.entry_id)
+    await hass.async_block_till_done()
+
+    # 2 kW over the 8 h horizon = 16 kWh; 1 K * 16 / 20 = 0.8 K
+    assert float(hass.states.get(_entity(hass, "solar_forecast")).state) == 16.0
+    assert float(hass.states.get(_entity(hass, "solar_deduction")).state) == 0.8
+    # 25.92 - 0.8 = 25.12
+    assert float(hass.states.get(_entity(hass, "flow_setpoint")).state) == 25.1
 
 
 async def test_options_flow_can_remove_a_source(hass: HomeAssistant, full_entry) -> None:
