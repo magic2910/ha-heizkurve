@@ -29,6 +29,8 @@ DEFAULT_MODE_DHW = "Warmwasserbereitung"
 
 UPDATE_INTERVAL = timedelta(minutes=1)
 FORECAST_INTERVAL = timedelta(minutes=30)
+# While no forecast is available (e.g. weather entity not loaded yet).
+FORECAST_RETRY_INTERVAL = timedelta(minutes=1)
 INTEGRAL_INTERVAL = timedelta(minutes=10)
 FAULT_DELAY = timedelta(minutes=5)
 COMPRESSOR_OFF_DELAY = timedelta(minutes=3)

@@ -280,6 +280,58 @@ async def test_forecast_from_weather_entity(hass: HomeAssistant, full_entry) -> 
     assert hass.states.get(_entity(hass, "heating_demand")).state == "on"
 
 
+async def test_forecast_retried_until_weather_is_ready(
+    hass: HomeAssistant, full_entry, freezer
+) -> None:
+    """The weather entity loads after the integration: retry every minute."""
+    ready = False
+    calls: list[str] = []
+
+    async def get_forecasts(call) -> ServiceResponse:
+        entity_id = call.data["entity_id"]
+        entity_id = entity_id[0] if isinstance(entity_id, list) else entity_id
+        calls.append(entity_id)
+        if not ready:
+            return {}
+        now = dt_util.utcnow()
+        return {
+            entity_id: {
+                "forecast": [
+                    {"datetime": (now + timedelta(hours=h)).isoformat(),
+                     "temperature": 4.7}
+                    for h in range(0, 50)
+                ]
+            }
+        }
+
+    assert await async_setup_component(hass, "weather", {})
+    hass.services.async_register(
+        "weather", "get_forecasts", get_forecasts,
+        supports_response=SupportsResponse.ONLY,
+    )
+    full_entry.add_to_hass(hass)
+    hass.config_entries.async_update_entry(
+        full_entry, data={**full_entry.data, CONF_WEATHER: ["weather.late"]}
+    )
+    await hass.config_entries.async_setup(full_entry.entry_id)
+    await hass.async_block_till_done()
+    assert calls == ["weather.late"]
+    assert hass.states.get(_entity(hass, "forecast")).state == "unavailable"
+
+    ready = True
+    freezer.tick(timedelta(minutes=1, seconds=1))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 2
+    assert float(hass.states.get(_entity(hass, "forecast")).state) == 4.7
+
+    # With a forecast in place, no more calls until the regular 30 minutes.
+    freezer.tick(timedelta(minutes=5))
+    async_fire_time_changed(hass)
+    await hass.async_block_till_done()
+    assert len(calls) == 2
+
+
 async def test_solar_deduction_from_helios(hass: HomeAssistant, full_entry) -> None:
     start = dt_util.now().replace(minute=0, second=0, microsecond=0)
     forecast = [

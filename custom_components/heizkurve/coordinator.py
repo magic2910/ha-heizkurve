@@ -39,6 +39,7 @@ from .const import (
     DOMAIN,
     FAULT_DELAY,
     FORECAST_INTERVAL,
+    FORECAST_RETRY_INTERVAL,
     INTEGRAL_INTERVAL,
     PARAM_DEFAULTS,
     STARTS_WINDOW,
@@ -171,6 +172,11 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
         )
         entry.async_on_unload(
             async_track_time_interval(
+                self.hass, self._async_forecast_retry, FORECAST_RETRY_INTERVAL
+            )
+        )
+        entry.async_on_unload(
+            async_track_time_interval(
                 self.hass, self._async_integral_tick, INTEGRAL_INTERVAL
             )
         )
@@ -259,6 +265,11 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
     async def _async_forecast_tick(self, _now: datetime) -> None:
         await self.async_update_forecast()
         self.async_set_updated_data(self._compute())
+
+    async def _async_forecast_retry(self, now: datetime) -> None:
+        """Ask again every minute while no forecast is available."""
+        if self.has(CONF_WEATHER) and not self._forecast:
+            await self._async_forecast_tick(now)
 
     async def _async_update_data(self) -> HeizkurveData:
         return self._compute()
