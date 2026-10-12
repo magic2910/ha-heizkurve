@@ -18,7 +18,6 @@ from custom_components.heizkurve.const import (
     CONF_ABS_MIN_FLOW,
     CONF_COMPARISON,
     CONF_COMPRESSOR,
-    CONF_INITIAL,
     CONF_MODE,
     CONF_MODE_DHW,
     CONF_OUTDOOR,
@@ -41,11 +40,8 @@ def _entity(hass: HomeAssistant, key: str) -> str:
     raise AssertionError(f"no entity for {key}")
 
 
-async def test_config_flow_takes_over_package_values(hass: HomeAssistant) -> None:
+async def test_config_flow_minimal(hass: HomeAssistant) -> None:
     hass.states.async_set("sensor.station", "5.0", TEMP)
-    hass.states.async_set("input_number.heizkurve_v2_steigung", "0.3")
-    hass.states.async_set("input_number.heizkurve_v2_niveau", "-0.5")
-    hass.states.async_set("input_number.heizkurve_v2_i_anteil", "0.12")
 
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": "user"}
@@ -65,10 +61,11 @@ async def test_config_flow_takes_over_package_values(hass: HomeAssistant) -> Non
         result["flow_id"], {CONF_ABS_MIN_FLOW: 25, CONF_ABS_MAX_FLOW: 45}
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"][CONF_INITIAL] == {
-        "slope": 0.3,
-        "level": -0.5,
-        "integral": 0.12,
+    assert result["data"] == {
+        CONF_OUTDOOR: "sensor.station",
+        CONF_ABS_MIN_FLOW: 25,
+        CONF_ABS_MAX_FLOW: 45,
+        CONF_MODE_DHW: "Warmwasserbereitung",
     }
     await hass.async_block_till_done()
 
@@ -86,7 +83,7 @@ async def test_config_flow_takes_over_package_values(hass: HomeAssistant) -> Non
 
 
 @pytest.fixture
-def full_entry(hass: HomeAssistant) -> MockConfigEntry:
+def full_entry(hass: HomeAssistant, hass_storage) -> MockConfigEntry:
     hass.states.async_set("sensor.station", "unavailable", TEMP)
     hass.states.async_set("sensor.hp_outdoor", "10.7", TEMP)
     hass.states.async_set("sensor.room_a", "23.0", TEMP)
@@ -95,7 +92,7 @@ def full_entry(hass: HomeAssistant) -> MockConfigEntry:
     hass.states.async_set("binary_sensor.compressor", "off")
     hass.states.async_set("sensor.mode", "Heizen")
     hass.states.async_set("sensor.old_curve", "24.5", TEMP)
-    return MockConfigEntry(
+    entry = MockConfigEntry(
         domain=DOMAIN,
         title="Heizkurve",
         data={
@@ -109,9 +106,17 @@ def full_entry(hass: HomeAssistant) -> MockConfigEntry:
             CONF_MODE: "sensor.mode",
             CONF_MODE_DHW: "Warmwasserbereitung",
             CONF_COMPARISON: "sensor.old_curve",
-            CONF_INITIAL: {"slope": 0.3, "level": -0.5, "integral": 0.12},
         },
     )
+    # State saved by an earlier run: tuned curve and a learned I-term.
+    key = f"{DOMAIN}.{entry.entry_id}"
+    hass_storage[key] = {
+        "version": 1,
+        "minor_version": 1,
+        "key": key,
+        "data": {"params": {"slope": 0.3, "level": -0.5}, "integral": 0.12},
+    }
+    return entry
 
 
 async def test_full_setup_values(hass: HomeAssistant, full_entry) -> None:
@@ -136,7 +141,7 @@ async def test_full_setup_values(hass: HomeAssistant, full_entry) -> None:
     assert float(state.state) == 26.0
     assert state.attributes["i_anteil"] == 0.12
 
-    # Switching off resets the I-term like the package does.
+    # Switching off resets the I-term.
     await hass.services.async_call(
         "switch", "turn_off", {"entity_id": _entity(hass, "active")}, blocking=True
     )
@@ -261,8 +266,7 @@ async def test_forecast_from_weather_entity(hass: HomeAssistant, full_entry) -> 
     full_entry.add_to_hass(hass)
     hass.config_entries.async_update_entry(
         full_entry,
-        data={**full_entry.data, CONF_WEATHER: ["weather.primary", "weather.backup"],
-              CONF_INITIAL: {"slope": 0.3, "level": -0.5, "forecast_weight": 0.5}},
+        data={**full_entry.data, CONF_WEATHER: ["weather.primary", "weather.backup"]},
     )
     await hass.config_entries.async_setup(full_entry.entry_id)
     await hass.async_block_till_done()

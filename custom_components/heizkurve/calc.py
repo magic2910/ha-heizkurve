@@ -1,7 +1,6 @@
 """Pure calculation logic of the heating curve.
 
-No Home Assistant imports: everything here is unit-testable on its own and
-mirrors the template logic of the Heizkurve v2 YAML package.
+No Home Assistant imports: everything here is unit-testable on its own.
 """
 
 from __future__ import annotations
@@ -10,7 +9,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-# Hysteresis around the heating limit (K), as in the package.
+# Hysteresis around the heating limit (K).
 HEATING_LIMIT_HYSTERESIS = 0.5
 # Tolerance when judging whether a setpoint lies inside min/max (K).
 SETPOINT_TOLERANCE = 0.05
@@ -66,7 +65,7 @@ def effective_min_flow(min_flow: float, absolute_min: float) -> float:
 def forecast_stats(
     forecast: Iterable[tuple[datetime, float]], now: datetime, horizon_h: int
 ) -> ForecastStats:
-    """Average the hourly forecast like the package's trigger template."""
+    """Average the hourly forecast over the horizon and the next 48 hours."""
     horizon: list[float] = []
     two_days: list[float] = []
     for when, temp in forecast:
@@ -243,7 +242,7 @@ class CompressorTracker:
     """Compressor runs for space heating, with an off-delay.
 
     Short gaps (defrost, CAN dropouts) shorter than off_delay do not count as
-    a new start, like delay_off on the package's template binary sensor.
+    a new start.
     """
 
     off_delay: timedelta = timedelta(minutes=3)

@@ -1,4 +1,4 @@
-"""Tests for the pure calculation logic, checked against the YAML package."""
+"""Tests for the pure calculation logic."""
 
 from datetime import datetime, timedelta, timezone
 
@@ -20,8 +20,8 @@ PARAMS = calc.CurveParams(
 )
 
 
-def test_flow_matches_live_package_value():
-    """sensor.heizkurve_v2 on 12.10.2026: unclamped 25.04, setpoint 25.0."""
+def test_flow_matches_reference_value():
+    """Reference case from a live installation: unclamped 25.04, setpoint 25.0."""
     result = calc.flow_setpoint(
         target=23.0,
         room=23.27,

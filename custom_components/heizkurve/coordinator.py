@@ -26,7 +26,6 @@ from .const import (
     CONF_COMPARISON,
     CONF_COMPRESSOR,
     CONF_HEAT_METER,
-    CONF_INITIAL,
     CONF_MODE,
     CONF_MODE_DHW,
     CONF_OUTDOOR,
@@ -156,13 +155,7 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
     async def async_setup(self) -> None:
         """Load the stored state and subscribe to the sources."""
         stored = await self._store.async_load()
-        if stored is None:
-            initial = self.conf.get(CONF_INITIAL) or {}
-            self.params.update(
-                {k: float(v) for k, v in initial.items() if k in self.params}
-            )
-            self.integral = float(initial.get("integral", 0.0))
-        else:
+        if stored is not None:
             self._restore(stored)
 
         entry = self.config_entry
@@ -242,7 +235,7 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
     async def async_set_active(self, on: bool) -> None:
         self.active = on
         if not on:
-            # Like the package: the I-term starts from zero after switching off.
+            # The I-term starts from zero after switching off.
             self.integral = 0.0
         self._save()
         self.async_set_updated_data(self._compute())

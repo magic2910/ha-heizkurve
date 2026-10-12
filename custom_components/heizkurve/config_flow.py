@@ -12,7 +12,7 @@ from homeassistant.config_entries import (
     OptionsFlowWithReload,
 )
 from homeassistant.const import CONF_NAME
-from homeassistant.core import HomeAssistant, callback
+from homeassistant.core import callback
 from homeassistant.helpers import selector
 
 from .const import (
@@ -21,7 +21,6 @@ from .const import (
     CONF_COMPARISON,
     CONF_COMPRESSOR,
     CONF_HEAT_METER,
-    CONF_INITIAL,
     CONF_MODE,
     CONF_MODE_DHW,
     CONF_OUTDOOR,
@@ -34,8 +33,6 @@ from .const import (
     DEFAULT_ABS_MIN_FLOW,
     DEFAULT_MODE_DHW,
     DOMAIN,
-    PACKAGE_PREFIX,
-    PARAMS,
 )
 
 SOURCE_KEYS = (
@@ -129,28 +126,6 @@ def _check_limits(user_input: dict[str, Any]) -> dict[str, str]:
     return {}
 
 
-def _package_values(hass: HomeAssistant) -> dict[str, float]:
-    """Take over the helper values of the Heizkurve v2 YAML package, if present."""
-    values: dict[str, float] = {}
-    for spec in PARAMS:
-        if spec.package_key is None:
-            continue
-        state = hass.states.get(f"{PACKAGE_PREFIX}{spec.package_key}")
-        if state is None:
-            continue
-        try:
-            values[spec.key] = float(state.state)
-        except ValueError:
-            continue
-    state = hass.states.get(f"{PACKAGE_PREFIX}i_anteil")
-    if state is not None:
-        try:
-            values["integral"] = float(state.state)
-        except ValueError:
-            pass
-    return values
-
-
 class HeizkurveConfigFlow(ConfigFlow, domain=DOMAIN):
     """Three steps: basis, forecast, plant."""
 
@@ -184,7 +159,6 @@ class HeizkurveConfigFlow(ConfigFlow, domain=DOMAIN):
             if not errors:
                 self._data.update(user_input)
                 name = self._data.pop(CONF_NAME)
-                self._data[CONF_INITIAL] = _package_values(self.hass)
                 return self.async_create_entry(title=name, data=self._data)
         return self.async_show_form(
             step_id="plant", data_schema=PLANT_SCHEMA, errors=errors
