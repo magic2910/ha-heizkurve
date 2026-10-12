@@ -1,0 +1,13 @@
+{
+  "domain": "heizkurve",
+  "name": "Heizkurve",
+  "codeowners": ["@magic2910"],
+  "config_flow": true,
+  "dependencies": ["weather"],
+  "documentation": "https://github.com/magic2910/ha-heizkurve",
+  "integration_type": "service",
+  "iot_class": "calculated",
+  "issue_tracker": "https://github.com/magic2910/ha-heizkurve/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}

@@ -1,0 +1,100 @@
+blueprint:
+  name: Heizkurve – Taktsperre an Wärmepumpe
+  description: >
+    Überträgt die Taktsperre der Integration Heizkurve auf die Wärmepumpe:
+    Während der Sperre wird ein Select auf die Sperr-Option gestellt, danach
+    zurück. Die Entscheidung, wann gesperrt wird, trifft die Integration
+    (Schalter "Taktsperre aktiv" und "Aktiv" müssen an sein).
+    Rotex HPSU: select.hpsu_can_raum_thermostat auf "An" bedeutet ohne Kontakt
+    an J16 laut RoCon-Anleitung "keine Wärmeanforderung"; Warmwasser ist nicht
+    betroffen.
+  domain: automation
+  source_url: https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/taktsperre.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    lock_sensor:
+      name: Taktsperre
+      description: Binary-Sensor "Taktsperre" der Integration Heizkurve.
+      selector:
+        entity:
+          filter:
+            - integration: heizkurve
+              domain: binary_sensor
+    target_select:
+      name: Select an der Wärmepumpe
+      description: Rotex HPSU select.hpsu_can_raum_thermostat.
+      selector:
+        entity:
+          domain: select
+    lock_option:
+      name: Option während der Sperre
+      default: An
+      selector:
+        text:
+    normal_option:
+      name: Option nach der Sperre
+      default: Aus
+      selector:
+        text:
+    notify_action:
+      name: Benachrichtigungs-Aktion (optional)
+      description: z. B. notify.mobile_app_mein_telefon. Leer lassen für keine Nachricht.
+      default: ""
+      selector:
+        text:
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: state
+    entity_id: !input lock_sensor
+    to: ["on", "off"]
+  - trigger: homeassistant
+    event: start
+
+variables:
+  lock_sensor: !input lock_sensor
+  target_select: !input target_select
+  lock_option: !input lock_option
+  normal_option: !input normal_option
+  notify_action: !input notify_action
+
+actions:
+  - if:
+      - condition: template
+        value_template: "{{ is_state(lock_sensor, 'on') }}"
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ not is_state(target_select, lock_option) }}"
+        then:
+          - action: select.select_option
+            target:
+              entity_id: "{{ target_select }}"
+            data:
+              option: "{{ lock_option }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: Wärmepumpe
+                  message: >
+                    Taktet ({{ state_attr(lock_sensor, 'starts_60min') }} Starts in 60 min),
+                    Heizung pausiert bis
+                    {{ as_timestamp(state_attr(lock_sensor, 'ende')) | timestamp_custom('%H:%M') }}.
+                continue_on_error: true
+    else:
+      # Nur zurückstellen, was die Sperre gesetzt hat.
+      - if:
+          - condition: template
+            value_template: "{{ is_state(target_select, lock_option) }}"
+        then:
+          - action: select.select_option
+            target:
+              entity_id: "{{ target_select }}"
+            data:
+              option: "{{ normal_option }}"

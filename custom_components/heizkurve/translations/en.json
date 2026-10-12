@@ -1,0 +1,259 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heating curve: basics",
+        "data": {
+          "name": "Name",
+          "outdoor_sensor": "Outdoor temperature",
+          "outdoor_fallback_sensor": "Outdoor temperature fallback",
+          "room_sensors": "Room temperature sensors",
+          "target_entity": "Target temperature"
+        },
+        "data_description": {
+          "outdoor_sensor": "Required. Your own weather station or any outdoor sensor.",
+          "outdoor_fallback_sensor": "Optional. Used while the main sensor is unavailable, e.g. the heat pump's outdoor sensor.",
+          "room_sensors": "Optional. Averaged. Without room temperature there is no room correction, no I-term and no comfort limit for the cycling lock.",
+          "target_entity": "Optional. Without it the integration creates its own target temperature number."
+        },
+        "description": "Only the outdoor temperature is required. Every other source is optional; without it the matching part of the formula is left out."
+      },
+      "forecast": {
+        "title": "Forecast",
+        "data": {
+          "weather_entities": "Weather entities (priority order)",
+          "solcast_today": "Solcast forecast today",
+          "solcast_tomorrow": "Solcast forecast tomorrow"
+        },
+        "data_description": {
+          "weather_entities": "Optional. Need an hourly forecast; the first one that delivers is used.",
+          "solcast_today": "Optional. Solcast sensor with the detailedForecast attribute.",
+          "solcast_tomorrow": "Optional. Needed for horizons past midnight."
+        }
+      },
+      "plant": {
+        "title": "Heat pump",
+        "data": {
+          "absolute_min_flow": "Absolute minimum flow",
+          "absolute_max_flow": "Absolute maximum flow",
+          "compressor_sensor": "Compressor status",
+          "mode_entity": "Operating mode",
+          "mode_dhw_value": "Operating mode value for hot water",
+          "heat_meter_sensor": "Heat meter",
+          "comparison_sensor": "Comparison curve"
+        },
+        "data_description": {
+          "absolute_min_flow": "Plant limit; the min/max flow numbers can only move inside these limits.",
+          "compressor_sensor": "Optional. Enables the cycling lock and the runtime/start figures.",
+          "mode_entity": "Optional. Hot water runs are not counted as starts.",
+          "heat_meter_sensor": "Optional. For heat per day and kWh per heating degree day.",
+          "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve."
+        }
+      }
+    },
+    "error": {
+      "flow_limits": "The minimum flow must be below the maximum flow."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heating curve: basics",
+        "data": {
+          "outdoor_sensor": "Outdoor temperature",
+          "outdoor_fallback_sensor": "Outdoor temperature fallback",
+          "room_sensors": "Room temperature sensors",
+          "target_entity": "Target temperature"
+        },
+        "data_description": {
+          "outdoor_sensor": "Required. Your own weather station or any outdoor sensor.",
+          "outdoor_fallback_sensor": "Optional. Used while the main sensor is unavailable, e.g. the heat pump's outdoor sensor.",
+          "room_sensors": "Optional. Averaged. Without room temperature there is no room correction, no I-term and no comfort limit for the cycling lock.",
+          "target_entity": "Optional. Without it the integration creates its own target temperature number."
+        }
+      },
+      "forecast": {
+        "title": "Forecast",
+        "data": {
+          "weather_entities": "Weather entities (priority order)",
+          "solcast_today": "Solcast forecast today",
+          "solcast_tomorrow": "Solcast forecast tomorrow"
+        },
+        "data_description": {
+          "weather_entities": "Optional. Need an hourly forecast; the first one that delivers is used.",
+          "solcast_today": "Optional. Solcast sensor with the detailedForecast attribute.",
+          "solcast_tomorrow": "Optional. Needed for horizons past midnight."
+        }
+      },
+      "plant": {
+        "title": "Heat pump",
+        "data": {
+          "absolute_min_flow": "Absolute minimum flow",
+          "absolute_max_flow": "Absolute maximum flow",
+          "compressor_sensor": "Compressor status",
+          "mode_entity": "Operating mode",
+          "mode_dhw_value": "Operating mode value for hot water",
+          "heat_meter_sensor": "Heat meter",
+          "comparison_sensor": "Comparison curve"
+        },
+        "data_description": {
+          "absolute_min_flow": "Plant limit; the min/max flow numbers can only move inside these limits.",
+          "compressor_sensor": "Optional. Enables the cycling lock and the runtime/start figures.",
+          "mode_entity": "Optional. Hot water runs are not counted as starts.",
+          "heat_meter_sensor": "Optional. For heat per day and kWh per heating degree day.",
+          "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve."
+        }
+      }
+    },
+    "error": {
+      "flow_limits": "The minimum flow must be below the maximum flow."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "flow_setpoint": {
+        "name": "Flow setpoint"
+      },
+      "outdoor": {
+        "name": "Outdoor temperature"
+      },
+      "outdoor_effective": {
+        "name": "Effective outdoor temperature"
+      },
+      "room": {
+        "name": "Room temperature"
+      },
+      "forecast": {
+        "name": "Forecast"
+      },
+      "forecast_48h": {
+        "name": "Forecast 48 h"
+      },
+      "solar_forecast": {
+        "name": "PV forecast"
+      },
+      "solar_deduction": {
+        "name": "Solar deduction"
+      },
+      "integral": {
+        "name": "I-term"
+      },
+      "comfort_deviation": {
+        "name": "Comfort deviation"
+      },
+      "degree_hours_today": {
+        "name": "Comfort degree hours today"
+      },
+      "degree_load": {
+        "name": "Heating degree load"
+      },
+      "degree_days_today": {
+        "name": "Heating degree days today"
+      },
+      "heat_today": {
+        "name": "Heat today"
+      },
+      "kwh_per_degree_day": {
+        "name": "kWh per heating degree day"
+      },
+      "starts_60min": {
+        "name": "Starts in 60 min"
+      },
+      "starts_today": {
+        "name": "Starts today"
+      },
+      "runtime_today": {
+        "name": "Runtime today"
+      },
+      "locks_today": {
+        "name": "Cycling locks today"
+      },
+      "comparison_difference": {
+        "name": "Difference to comparison curve"
+      }
+    },
+    "binary_sensor": {
+      "heating_demand": {
+        "name": "Heating demand"
+      },
+      "fault": {
+        "name": "Fault"
+      },
+      "compressor_heating": {
+        "name": "Compressor heating"
+      },
+      "cycling_lock": {
+        "name": "Cycling lock"
+      }
+    },
+    "switch": {
+      "active": {
+        "name": "Active"
+      },
+      "cycling_lock_enabled": {
+        "name": "Cycling lock enabled"
+      }
+    },
+    "button": {
+      "reset_integral": {
+        "name": "Reset I-term"
+      }
+    },
+    "number": {
+      "slope": {
+        "name": "Slope"
+      },
+      "level": {
+        "name": "Level"
+      },
+      "room_factor": {
+        "name": "Room factor"
+      },
+      "min_flow": {
+        "name": "Minimum flow"
+      },
+      "max_flow": {
+        "name": "Maximum flow"
+      },
+      "heating_limit": {
+        "name": "Heating limit"
+      },
+      "forecast_horizon": {
+        "name": "Forecast horizon"
+      },
+      "forecast_weight": {
+        "name": "Forecast weight"
+      },
+      "forecast_max_deviation": {
+        "name": "Forecast max deviation"
+      },
+      "solar_max_deduction": {
+        "name": "Solar max deduction"
+      },
+      "solar_reference": {
+        "name": "PV reference"
+      },
+      "integral_time": {
+        "name": "I time constant"
+      },
+      "integral_max": {
+        "name": "I max"
+      },
+      "comfort_band": {
+        "name": "Comfort band"
+      },
+      "lock_starts": {
+        "name": "Cycling starts per hour"
+      },
+      "lock_pause": {
+        "name": "Cycling pause"
+      },
+      "lock_max_per_day": {
+        "name": "Cycling locks max per day"
+      },
+      "target_temperature": {
+        "name": "Target temperature"
+      }
+    }
+  }
+}

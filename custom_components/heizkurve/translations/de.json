@@ -1,0 +1,259 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Heizkurve: Basis",
+        "data": {
+          "name": "Name",
+          "outdoor_sensor": "Außentemperatur",
+          "outdoor_fallback_sensor": "Außentemperatur Fallback",
+          "room_sensors": "Raumtemperatur-Sensoren",
+          "target_entity": "Zieltemperatur"
+        },
+        "data_description": {
+          "outdoor_sensor": "Pflicht. Eigene Wetterstation oder ein beliebiger Außenfühler.",
+          "outdoor_fallback_sensor": "Optional. Wird genutzt, solange der Hauptfühler nicht verfügbar ist, z. B. der Außenfühler der Wärmepumpe.",
+          "room_sensors": "Optional. Es wird der Mittelwert gebildet. Ohne Raumtemperatur entfallen Raumkorrektur, I-Anteil und die Komfortgrenze der Taktsperre.",
+          "target_entity": "Optional. Ohne Auswahl legt die Integration eine eigene Zahl für die Zieltemperatur an."
+        },
+        "description": "Nur die Außentemperatur ist Pflicht. Alle anderen Quellen sind optional; ohne sie entfällt nur der zugehörige Teil der Formel."
+      },
+      "forecast": {
+        "title": "Prognose",
+        "data": {
+          "weather_entities": "Wetter-Entitäten (in Prioritätsreihenfolge)",
+          "solcast_today": "Solcast-Prognose heute",
+          "solcast_tomorrow": "Solcast-Prognose morgen"
+        },
+        "data_description": {
+          "weather_entities": "Optional. Brauchen eine stündliche Vorhersage; die erste, die liefert, wird genutzt.",
+          "solcast_today": "Optional. Solcast-Sensor mit dem Attribut detailedForecast.",
+          "solcast_tomorrow": "Optional. Nötig für Horizonte über Mitternacht hinaus."
+        }
+      },
+      "plant": {
+        "title": "Wärmepumpe",
+        "data": {
+          "absolute_min_flow": "Absoluter Min-Vorlauf",
+          "absolute_max_flow": "Absoluter Max-Vorlauf",
+          "compressor_sensor": "Kompressorstatus",
+          "mode_entity": "Betriebsart",
+          "mode_dhw_value": "Wert der Betriebsart für Warmwasser",
+          "heat_meter_sensor": "Wärmemengenzähler",
+          "comparison_sensor": "Vergleichskurve"
+        },
+        "data_description": {
+          "absolute_min_flow": "Anlagengrenze; die Zahlen Min-/Max-Vorlauf lassen sich nur innerhalb verstellen.",
+          "compressor_sensor": "Optional. Schaltet Taktsperre sowie Laufzeit- und Starts-Kennzahlen frei.",
+          "mode_entity": "Optional. Warmwasser-Läufe zählen dann nicht als Starts.",
+          "heat_meter_sensor": "Optional. Für Wärme pro Tag und kWh je Heizgradtag.",
+          "comparison_sensor": "Optional. Ein anderer Vorlauf-Sensor zum Vergleich, z. B. die bisherige Heizkurve."
+        }
+      }
+    },
+    "error": {
+      "flow_limits": "Der Min-Vorlauf muss unter dem Max-Vorlauf liegen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Heizkurve: Basis",
+        "data": {
+          "outdoor_sensor": "Außentemperatur",
+          "outdoor_fallback_sensor": "Außentemperatur Fallback",
+          "room_sensors": "Raumtemperatur-Sensoren",
+          "target_entity": "Zieltemperatur"
+        },
+        "data_description": {
+          "outdoor_sensor": "Pflicht. Eigene Wetterstation oder ein beliebiger Außenfühler.",
+          "outdoor_fallback_sensor": "Optional. Wird genutzt, solange der Hauptfühler nicht verfügbar ist, z. B. der Außenfühler der Wärmepumpe.",
+          "room_sensors": "Optional. Es wird der Mittelwert gebildet. Ohne Raumtemperatur entfallen Raumkorrektur, I-Anteil und die Komfortgrenze der Taktsperre.",
+          "target_entity": "Optional. Ohne Auswahl legt die Integration eine eigene Zahl für die Zieltemperatur an."
+        }
+      },
+      "forecast": {
+        "title": "Prognose",
+        "data": {
+          "weather_entities": "Wetter-Entitäten (in Prioritätsreihenfolge)",
+          "solcast_today": "Solcast-Prognose heute",
+          "solcast_tomorrow": "Solcast-Prognose morgen"
+        },
+        "data_description": {
+          "weather_entities": "Optional. Brauchen eine stündliche Vorhersage; die erste, die liefert, wird genutzt.",
+          "solcast_today": "Optional. Solcast-Sensor mit dem Attribut detailedForecast.",
+          "solcast_tomorrow": "Optional. Nötig für Horizonte über Mitternacht hinaus."
+        }
+      },
+      "plant": {
+        "title": "Wärmepumpe",
+        "data": {
+          "absolute_min_flow": "Absoluter Min-Vorlauf",
+          "absolute_max_flow": "Absoluter Max-Vorlauf",
+          "compressor_sensor": "Kompressorstatus",
+          "mode_entity": "Betriebsart",
+          "mode_dhw_value": "Wert der Betriebsart für Warmwasser",
+          "heat_meter_sensor": "Wärmemengenzähler",
+          "comparison_sensor": "Vergleichskurve"
+        },
+        "data_description": {
+          "absolute_min_flow": "Anlagengrenze; die Zahlen Min-/Max-Vorlauf lassen sich nur innerhalb verstellen.",
+          "compressor_sensor": "Optional. Schaltet Taktsperre sowie Laufzeit- und Starts-Kennzahlen frei.",
+          "mode_entity": "Optional. Warmwasser-Läufe zählen dann nicht als Starts.",
+          "heat_meter_sensor": "Optional. Für Wärme pro Tag und kWh je Heizgradtag.",
+          "comparison_sensor": "Optional. Ein anderer Vorlauf-Sensor zum Vergleich, z. B. die bisherige Heizkurve."
+        }
+      }
+    },
+    "error": {
+      "flow_limits": "Der Min-Vorlauf muss unter dem Max-Vorlauf liegen."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "flow_setpoint": {
+        "name": "Vorlauf-Soll"
+      },
+      "outdoor": {
+        "name": "Außentemperatur"
+      },
+      "outdoor_effective": {
+        "name": "Außentemperatur effektiv"
+      },
+      "room": {
+        "name": "Raumtemperatur"
+      },
+      "forecast": {
+        "name": "Prognose"
+      },
+      "forecast_48h": {
+        "name": "Prognose 48 h"
+      },
+      "solar_forecast": {
+        "name": "PV-Prognose"
+      },
+      "solar_deduction": {
+        "name": "Solarabzug"
+      },
+      "integral": {
+        "name": "I-Anteil"
+      },
+      "comfort_deviation": {
+        "name": "Komfortabweichung"
+      },
+      "degree_hours_today": {
+        "name": "Gradstunden heute"
+      },
+      "degree_load": {
+        "name": "Heizgradlast"
+      },
+      "degree_days_today": {
+        "name": "Heizgradtage heute"
+      },
+      "heat_today": {
+        "name": "Wärme heute"
+      },
+      "kwh_per_degree_day": {
+        "name": "kWh je Heizgradtag"
+      },
+      "starts_60min": {
+        "name": "Starts in 60 min"
+      },
+      "starts_today": {
+        "name": "Starts heute"
+      },
+      "runtime_today": {
+        "name": "Laufzeit heute"
+      },
+      "locks_today": {
+        "name": "Taktsperren heute"
+      },
+      "comparison_difference": {
+        "name": "Differenz zur Vergleichskurve"
+      }
+    },
+    "binary_sensor": {
+      "heating_demand": {
+        "name": "Heizbedarf"
+      },
+      "fault": {
+        "name": "Störung"
+      },
+      "compressor_heating": {
+        "name": "Kompressor heizt"
+      },
+      "cycling_lock": {
+        "name": "Taktsperre"
+      }
+    },
+    "switch": {
+      "active": {
+        "name": "Aktiv"
+      },
+      "cycling_lock_enabled": {
+        "name": "Taktsperre aktiv"
+      }
+    },
+    "button": {
+      "reset_integral": {
+        "name": "I-Anteil zurücksetzen"
+      }
+    },
+    "number": {
+      "slope": {
+        "name": "Steigung"
+      },
+      "level": {
+        "name": "Niveau"
+      },
+      "room_factor": {
+        "name": "Raumfaktor"
+      },
+      "min_flow": {
+        "name": "Min-Vorlauf"
+      },
+      "max_flow": {
+        "name": "Max-Vorlauf"
+      },
+      "heating_limit": {
+        "name": "Heizgrenze"
+      },
+      "forecast_horizon": {
+        "name": "Prognose-Horizont"
+      },
+      "forecast_weight": {
+        "name": "Prognose-Gewicht"
+      },
+      "forecast_max_deviation": {
+        "name": "Prognose max. Abweichung"
+      },
+      "solar_max_deduction": {
+        "name": "Solar-Abzug max"
+      },
+      "solar_reference": {
+        "name": "PV-Referenz"
+      },
+      "integral_time": {
+        "name": "I-Zeitkonstante"
+      },
+      "integral_max": {
+        "name": "I max"
+      },
+      "comfort_band": {
+        "name": "Komfortband"
+      },
+      "lock_starts": {
+        "name": "Takt-Starts pro Stunde"
+      },
+      "lock_pause": {
+        "name": "Takt-Pause"
+      },
+      "lock_max_per_day": {
+        "name": "Taktsperren max pro Tag"
+      },
+      "target_temperature": {
+        "name": "Zieltemperatur"
+      }
+    }
+  }
+}

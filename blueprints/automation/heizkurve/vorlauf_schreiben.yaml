@@ -1,0 +1,274 @@
+blueprint:
+  name: Heizkurve – Vorlauf an Wärmepumpe schreiben
+  description: >
+    Schreibt den Vorlauf-Sollwert der Integration Heizkurve in die Sollwert-Entitäten
+    deiner Wärmepumpe, aber nur solange der Schalter "Aktiv" der Integration an ist.
+    Geschrieben wird stündlich und nur, wenn sich der Wert um mindestens die
+    Mindeständerung unterscheidet. Optional: Betriebsart der Wärmepumpe beim
+    Aktivieren und Deaktivieren umschalten, Push-Nachricht bei Störung und die
+    Heizgrenze der Integration auf die Wärmepumpe übertragen.
+  domain: automation
+  source_url: https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/vorlauf_schreiben.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    heizkurve:
+      name: Heizkurve
+      input:
+        setpoint:
+          name: Vorlauf-Soll
+          description: Sensor "Vorlauf-Soll" der Integration Heizkurve.
+          selector:
+            entity:
+              filter:
+                - integration: heizkurve
+                  domain: sensor
+        active_switch:
+          name: Schalter Aktiv
+          description: Schalter "Aktiv" der Integration Heizkurve.
+          selector:
+            entity:
+              filter:
+                - integration: heizkurve
+                  domain: switch
+    waermepumpe:
+      name: Wärmepumpe
+      input:
+        targets:
+          name: Sollwert-Entitäten
+          description: >
+            Eine oder mehrere number-Entitäten für den Vorlauf-Sollwert
+            (Rotex HPSU: T Vorlauf Tag und T Vorlauf Nacht).
+          selector:
+            entity:
+              domain: number
+              multiple: true
+        min_change:
+          name: Mindeständerung
+          description: Nur schreiben, wenn der neue Wert um mindestens so viel abweicht.
+          default: 0.2
+          selector:
+            number:
+              min: 0
+              max: 2
+              step: 0.1
+              unit_of_measurement: K
+              mode: box
+        write_minute:
+          name: Minute zum Schreiben
+          description: Geschrieben wird stündlich zu dieser Minute.
+          default: 0
+          selector:
+            number:
+              min: 0
+              max: 59
+              mode: box
+    betriebsart:
+      name: Heizkreis-Funktion (optional)
+      collapsed: true
+      input:
+        mode_select:
+          name: Select der Heizkreis-Funktion
+          description: Rotex HPSU select.hpsu_can_hk_funktion. Leer lassen, wenn nicht nötig.
+          default: []
+          selector:
+            entity:
+              domain: select
+        mode_on_option:
+          name: Option beim Aktivieren
+          default: Fest
+          selector:
+            text:
+        mode_off_option:
+          name: Option beim Deaktivieren
+          description: Leer lassen, um nichts zurückzustellen.
+          default: Witterungsgeführt
+          selector:
+            text:
+    stoerung:
+      name: Störung melden (optional)
+      collapsed: true
+      input:
+        fault_sensor:
+          name: Störung
+          description: Binary-Sensor "Störung" der Integration Heizkurve.
+          default: []
+          selector:
+            entity:
+              filter:
+                - integration: heizkurve
+                  domain: binary_sensor
+        notify_action:
+          name: Benachrichtigungs-Aktion
+          description: z. B. notify.mobile_app_mein_telefon. Leer lassen für keine Nachricht.
+          default: ""
+          selector:
+            text:
+    heizgrenze:
+      name: Heizgrenze übernehmen (optional)
+      description: >
+        Schaltet die Betriebsart der Wärmepumpe nach dem Heizbedarf der Integration
+        zwischen Heizen und Sommer um. Nur sinnvoll, wenn die eigene Heizgrenze der
+        Wärmepumpe ausgeschaltet ist. Vorher prüfen, dass Warmwasser im Sommerbetrieb
+        weiterläuft.
+      collapsed: true
+      input:
+        heating_demand:
+          name: Heizbedarf
+          description: Binary-Sensor "Heizbedarf" der Integration Heizkurve.
+          default: []
+          selector:
+            entity:
+              filter:
+                - integration: heizkurve
+                  domain: binary_sensor
+        operating_mode_select:
+          name: Select der Betriebsart
+          description: Rotex HPSU select.hpsu_can_betriebsmodus.
+          default: []
+          selector:
+            entity:
+              domain: select
+        heating_option:
+          name: Option bei Heizbedarf
+          default: Heizen
+          selector:
+            text:
+        summer_option:
+          name: Option ohne Heizbedarf
+          default: Sommer
+          selector:
+            text:
+
+mode: queued
+max: 5
+
+triggers:
+  - trigger: time_pattern
+    minutes: !input write_minute
+    id: interval
+  - trigger: state
+    entity_id: !input active_switch
+    to: ["on", "off"]
+    id: switch
+  - trigger: homeassistant
+    event: start
+    id: start
+  - trigger: state
+    entity_id: !input fault_sensor
+    to: ["on", "off"]
+    id: fault
+  - trigger: state
+    entity_id: !input heating_demand
+    to: ["on", "off"]
+    id: demand
+
+variables:
+  setpoint: !input setpoint
+  active_switch: !input active_switch
+  min_change: !input min_change
+  mode_select: !input mode_select
+  mode_on_option: !input mode_on_option
+  mode_off_option: !input mode_off_option
+  fault_sensor: !input fault_sensor
+  notify_action: !input notify_action
+  heating_demand: !input heating_demand
+  operating_mode_select: !input operating_mode_select
+  heating_option: !input heating_option
+  summer_option: !input summer_option
+  active: "{{ is_state(active_switch, 'on') }}"
+  soll: "{{ states(setpoint) }}"
+
+actions:
+  - choose:
+      # Störung: Nachricht senden (schreibt nichts)
+      - conditions:
+          - condition: trigger
+            id: fault
+          - condition: template
+            value_template: "{{ notify_action | length > 0 }}"
+        sequence:
+          - action: "{{ notify_action }}"
+            data:
+              title: Heizkurve
+              message: >
+                {% if is_state(fault_sensor, 'on') %}
+                Vorlauf-Sollwert seit mindestens 5 min ungültig ({{ soll }}).
+                Die Wärmepumpe behält den zuletzt geschriebenen Wert.
+                {% else %}
+                Vorlauf-Sollwert wieder gültig ({{ soll }} °C).
+                {% endif %}
+            continue_on_error: true
+
+      # Schalter aus: Heizkreis-Funktion zurückstellen
+      - conditions:
+          - condition: template
+            value_template: "{{ not active and trigger.id in ['switch', 'start'] }}"
+          - condition: template
+            value_template: >
+              {{ mode_select | length > 0 and mode_off_option | length > 0
+                 and not is_state(mode_select, mode_off_option) }}
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: "{{ mode_select }}"
+            data:
+              option: "{{ mode_off_option }}"
+
+      # Heizgrenze: Betriebsart nach Heizbedarf
+      - conditions:
+          - condition: trigger
+            id: demand
+          - condition: template
+            value_template: "{{ active and operating_mode_select | length > 0 }}"
+        sequence:
+          - variables:
+              wanted: >
+                {{ heating_option if is_state(heating_demand, 'on') else summer_option }}
+          - if:
+              - condition: template
+                value_template: "{{ not is_state(operating_mode_select, wanted) }}"
+            then:
+              - action: select.select_option
+                target:
+                  entity_id: "{{ operating_mode_select }}"
+                data:
+                  option: "{{ wanted }}"
+
+      # Aktiv: Sollwert schreiben
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ active and trigger.id in ['interval', 'switch', 'start']
+                 and is_number(soll) }}
+        sequence:
+          - if:
+              - condition: template
+                value_template: >
+                  {{ mode_select | length > 0 and mode_on_option | length > 0
+                     and not is_state(mode_select, mode_on_option) }}
+            then:
+              - action: select.select_option
+                target:
+                  entity_id: "{{ mode_select }}"
+                data:
+                  option: "{{ mode_on_option }}"
+          - repeat:
+              for_each: !input targets
+              sequence:
+                - variables:
+                    lo: "{{ state_attr(repeat.item, 'min') | float(0) }}"
+                    hi: "{{ state_attr(repeat.item, 'max') | float(100) }}"
+                    value: "{{ [[soll | float, lo] | max, hi] | min }}"
+                    current: "{{ states(repeat.item) }}"
+                - if:
+                    - condition: template
+                      value_template: >
+                        {{ not is_number(current)
+                           or (value - current | float) | abs >= min_change }}
+                  then:
+                    - action: number.set_value
+                      target:
+                        entity_id: "{{ repeat.item }}"
+                      data:
+                        value: "{{ value }}"
