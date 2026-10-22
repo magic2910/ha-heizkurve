@@ -25,6 +25,12 @@ Vorausschauende Heizkurve für Wärmepumpen mit Fußbodenheizung. Die Integratio
 
    Oder: Einstellungen, Geräte & Dienste, Integration hinzufügen, "Heizkurve". Taucht sie dort nicht auf, die Seite im Browser hart neu laden (Cache).
 
+### Updates
+
+Neue Versionen erscheinen als [GitHub-Release](https://github.com/magic2910/ha-heizkurve/releases). HACS meldet sie in Home Assistant unter Einstellungen, Updates; installiert wird erst, wenn du dort auf "Aktualisieren" klickst, danach Home Assistant neu starten. Die Release-Notizen zeigen, was sich geändert hat.
+
+Blueprints aktualisiert HACS nicht. Hat sich ein Blueprint geändert (steht in den Release-Notizen), unter Einstellungen, Automationen & Szenen, Blueprints beim Blueprint über das Menü "Blueprint erneut importieren" wählen.
+
 ## Einrichtung
 
 Der Dialog hat drei Schritte. Nur die Außentemperatur ist Pflicht. Fehlt ein optionaler Eingang, entfällt nur der zugehörige Teil der Formel, und die passenden Parameter werden gar nicht erst angelegt. Alles lässt sich später unter "Konfigurieren" ändern.
@@ -208,3 +214,5 @@ pytest
 ```
 
 Die Rechenlogik liegt ohne Home-Assistant-Abhängigkeit in `custom_components/heizkurve/calc.py`.
+
+Release: `version` in `custom_components/heizkurve/manifest.json` erhöhen, committen und einen passenden Tag pushen (`git tag v0.3.3 && git push origin v0.3.3`). Der Workflow `release.yaml` prüft, dass Tag und Manifest übereinstimmen, lässt die Tests laufen und legt das GitHub-Release mit automatisch erzeugten Notizen an.
