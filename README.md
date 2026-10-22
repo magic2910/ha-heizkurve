@@ -170,7 +170,10 @@ Gute Fragen an die KI: "Wie gut passt meine Heizkurve zu den letzten 30 Tagen?",
 
 ## Blueprints
 
-HACS installiert keine Blueprints. Importiere sie über die Knöpfe:
+HACS installiert keine Blueprints. Importiere sie über die Knöpfe. Öffnet sich danach in Home Assistant nur die Blueprint-Liste ohne Import-Dialog (Fehler im Home-Assistant-Frontend um Version 2026.10, [frontend#55080](https://github.com/home-assistant/frontend/issues/55080)), importiere von Hand: Einstellungen, Automationen & Szenen, Blueprints, "Blueprint importieren", die Adresse einfügen, "Vorschau", "Blueprint importieren".
+
+- `https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/vorlauf_schreiben.yaml`
+- `https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/taktsperre.yaml`
 
 **Vorlauf an Wärmepumpe schreiben**
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmagic2910%2Fha-heizkurve%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fheizkurve%2Fvorlauf_schreiben.yaml)
