@@ -45,8 +45,11 @@ blueprint:
               multiple: true
         min_change:
           name: Mindeständerung
-          description: Nur schreiben, wenn der neue Wert um mindestens so viel abweicht.
-          default: 0.2
+          description: >
+            Nur schreiben, wenn der Wert der Wärmepumpe um mindestens so viel vom
+            Sollwert abweicht. 0,1 K schreibt jede Änderung, die die Wärmepumpe
+            darstellen kann, und spart trotzdem die unveränderten Schreibzugriffe.
+          default: 0.1
           selector:
             number:
               min: 0
@@ -176,8 +179,12 @@ variables:
   operating_mode_select: !input operating_mode_select
   heating_option: !input heating_option
   summer_option: !input summer_option
+  targets: !input targets
   active: "{{ is_state(active_switch, 'on') }}"
   soll: "{{ states(setpoint) }}"
+  # Bei Verbindungsabbrüchen zur Wärmepumpe (unavailable/unknown) wird nichts geschrieben.
+  mode_select_ok: "{{ mode_select | length == 0 or has_value(mode_select) }}"
+  targets_ok: "{{ targets | reject('has_value') | list | length == 0 }}"
 
 actions:
   - choose:
@@ -207,6 +214,7 @@ actions:
           - condition: template
             value_template: >
               {{ mode_select | length > 0 and mode_off_option | length > 0
+                 and has_value(mode_select)
                  and not is_state(mode_select, mode_off_option) }}
         sequence:
           - action: select.select_option
@@ -220,7 +228,9 @@ actions:
           - condition: trigger
             id: demand
           - condition: template
-            value_template: "{{ active and operating_mode_select | length > 0 }}"
+            value_template: >
+              {{ active and operating_mode_select | length > 0
+                 and has_value(operating_mode_select) }}
         sequence:
           - variables:
               wanted: >
@@ -240,7 +250,7 @@ actions:
           - condition: template
             value_template: >
               {{ active and trigger.id in ['interval', 'switch', 'start']
-                 and is_number(soll) }}
+                 and is_number(soll) and mode_select_ok and targets_ok }}
         sequence:
           - if:
               - condition: template
@@ -265,7 +275,7 @@ actions:
                     - condition: template
                       value_template: >
                         {{ not is_number(current)
-                           or (value - current | float) | abs >= min_change }}
+                           or ((value - current | float) | abs | round(2)) >= min_change }}
                   then:
                     - action: number.set_value
                       target:

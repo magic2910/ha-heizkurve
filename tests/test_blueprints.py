@@ -40,7 +40,7 @@ async def _setup(hass: HomeAssistant, blueprint: str, inputs: dict) -> None:
 WRITE_INPUTS = {
     "setpoint": "sensor.heizkurve_flow_setpoint",
     "active_switch": "switch.heizkurve_active",
-    "targets": ["number.vl_tag", "number.vl_nacht"],
+    "targets": ["number.vl_tag", "number.vl_nacht", "number.vl_extra"],
     "mode_select": "select.hk_funktion",
     "fault_sensor": "binary_sensor.heizkurve_fault",
     "notify_action": "notify.phone",
@@ -54,6 +54,7 @@ def _heat_pump(hass: HomeAssistant) -> None:
     hass.states.async_set("switch.heizkurve_active", "off")
     hass.states.async_set("number.vl_tag", "26.2", {"min": 20, "max": 90})
     hass.states.async_set("number.vl_nacht", "25.0", {"min": 10, "max": 90})
+    hass.states.async_set("number.vl_extra", "26.3", {"min": 20, "max": 90})
     hass.states.async_set("select.hk_funktion", "Witterungsgeführt")
     hass.states.async_set("binary_sensor.heizkurve_fault", "off")
     hass.states.async_set("binary_sensor.heizkurve_heating_demand", "on")
@@ -72,12 +73,16 @@ async def test_write_blueprint(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert numbers == [] and selects == []
 
-    # Switching on: mode to "Fest", only the value that differs >= 0.2 K.
+    # Switching on: mode to "Fest", only the values that differ >= 0.1 K.
+    # 26.3 - 26.2 is 0.0999... in floating point and must still count.
+    hass.states.async_set("number.vl_tag", "26.3", {"min": 20, "max": 90})
+    hass.states.async_set("number.vl_extra", "26.2", {"min": 20, "max": 90})
     hass.states.async_set("switch.heizkurve_active", "on")
     await hass.async_block_till_done()
     assert [c.data["option"] for c in selects] == ["Fest"]
     assert [(c.data["entity_id"], c.data["value"]) for c in numbers] == [
-        (["number.vl_nacht"], 26.3)
+        (["number.vl_nacht"], 26.3),
+        (["number.vl_extra"], 26.3),
     ]
 
     # Heating demand gone while active: operating mode to summer.
@@ -105,6 +110,43 @@ async def test_write_blueprint(hass: HomeAssistant) -> None:
     }
 
 
+async def test_write_blueprint_skips_unchanged_and_unavailable(
+    hass: HomeAssistant,
+) -> None:
+    _heat_pump(hass)
+    hass.states.async_set("number.vl_tag", "26.3", {"min": 20, "max": 90})
+    hass.states.async_set("number.vl_nacht", "26.3", {"min": 10, "max": 90})
+    hass.states.async_set("select.hk_funktion", "Fest")
+    numbers = async_mock_service(hass, "number", "set_value")
+    selects = async_mock_service(hass, "select", "select_option")
+    await _setup(hass, "vorlauf_schreiben.yaml", WRITE_INPUTS)
+
+    # Everything already matches: nothing is written.
+    hass.states.async_set("switch.heizkurve_active", "on")
+    await hass.async_block_till_done()
+    assert numbers == [] and selects == []
+
+    # A heat pump entity drops out: nothing is written, not even the others.
+    hass.states.async_set("switch.heizkurve_active", "off")
+    await hass.async_block_till_done()
+    selects.clear()
+    hass.states.async_set("sensor.heizkurve_flow_setpoint", "27.0")
+    hass.states.async_set("number.vl_nacht", "unavailable")
+    hass.states.async_set("switch.heizkurve_active", "on")
+    await hass.async_block_till_done()
+    assert numbers == [] and selects == []
+
+    # Back again: both changed values are written.
+    hass.states.async_set("switch.heizkurve_active", "off")
+    await hass.async_block_till_done()
+    hass.states.async_set("number.vl_nacht", "26.3", {"min": 10, "max": 90})
+    hass.states.async_set("switch.heizkurve_active", "on")
+    await hass.async_block_till_done()
+    assert sorted(c.data["entity_id"][0] for c in numbers) == [
+        "number.vl_extra", "number.vl_nacht", "number.vl_tag"
+    ]
+
+
 async def test_write_blueprint_minimal_inputs(hass: HomeAssistant) -> None:
     _heat_pump(hass)
     hass.states.async_set("switch.heizkurve_active", "on")
@@ -119,7 +161,10 @@ async def test_write_blueprint_minimal_inputs(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     hass.states.async_set("switch.heizkurve_active", "on")
     await hass.async_block_till_done()
-    assert len(numbers) == 1
+    # Default min_change 0.1 K: every target that differs by >= 0.1 K is written.
+    assert sorted(c.data["entity_id"][0] for c in numbers) == [
+        "number.vl_nacht", "number.vl_tag"
+    ]
     assert selects == []
 
 
