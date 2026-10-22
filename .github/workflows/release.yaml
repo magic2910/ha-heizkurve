@@ -1,6 +1,9 @@
 name: Release
 
+# Run manually (Actions, "Release", "Run workflow") or push a tag v<version>.
+# The version comes from custom_components/heizkurve/manifest.json.
 on:
+  workflow_dispatch:
   push:
     tags:
       - "v*"
@@ -13,13 +16,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - name: Check tag matches manifest version
+      - name: Read version
+        id: version
         run: |
-          version=$(jq -r .version custom_components/heizkurve/manifest.json)
-          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
-            echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest version ${version}"
+          tag="v$(jq -r .version custom_components/heizkurve/manifest.json)"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "${tag}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match manifest version ${tag}"
             exit 1
           fi
+          if gh release view "${tag}" >/dev/null 2>&1; then
+            echo "::error::Release ${tag} already exists, raise the version in manifest.json first"
+            exit 1
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+        env:
+          GH_TOKEN: ${{ github.token }}
       - uses: actions/setup-python@v6
         with:
           python-version: "3.13"
@@ -28,4 +39,4 @@ jobs:
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "${GITHUB_REF_NAME}" --title "${GITHUB_REF_NAME}" --generate-notes --verify-tag
+        run: gh release create "${{ steps.version.outputs.tag }}" --target "${GITHUB_SHA}" --title "${{ steps.version.outputs.tag }}" --generate-notes

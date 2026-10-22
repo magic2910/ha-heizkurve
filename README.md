@@ -215,4 +215,4 @@ pytest
 
 Die Rechenlogik liegt ohne Home-Assistant-Abhängigkeit in `custom_components/heizkurve/calc.py`.
 
-Release: `version` in `custom_components/heizkurve/manifest.json` erhöhen, committen und einen passenden Tag pushen (`git tag v0.3.3 && git push origin v0.3.3`). Der Workflow `release.yaml` prüft, dass Tag und Manifest übereinstimmen, lässt die Tests laufen und legt das GitHub-Release mit automatisch erzeugten Notizen an.
+Release: `version` in `custom_components/heizkurve/manifest.json` erhöhen und committen, dann auf GitHub unter Actions den Workflow "Release" mit "Run workflow" starten (alternativ einen Tag `v<version>` pushen). Der Workflow lässt die Tests laufen, legt Tag und GitHub-Release mit automatisch erzeugten Notizen an und bricht ab, wenn es die Version schon gibt.
