@@ -13,5 +13,5 @@
   "iot_class": "calculated",
   "issue_tracker": "https://github.com/magic2910/ha-heizkurve/issues",
   "requirements": [],
-  "version": "0.3.3"
+  "version": "0.3.4"
 }

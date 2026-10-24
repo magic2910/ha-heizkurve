@@ -73,10 +73,10 @@ async def test_write_blueprint(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     assert numbers == [] and selects == []
 
-    # Switching on: mode to "Fest", only the values that differ >= 0.1 K.
-    # 26.3 - 26.2 is 0.0999... in floating point and must still count.
-    hass.states.async_set("number.vl_tag", "26.3", {"min": 20, "max": 90})
-    hass.states.async_set("number.vl_extra", "26.2", {"min": 20, "max": 90})
+    # Switching on: mode to "Fest", only the values that differ >= 0.3 K
+    # (default): vl_tag is 0.2 K off and stays, vl_extra is exactly 0.3 K off.
+    hass.states.async_set("number.vl_tag", "26.1", {"min": 20, "max": 90})
+    hass.states.async_set("number.vl_extra", "26.0", {"min": 20, "max": 90})
     hass.states.async_set("switch.heizkurve_active", "on")
     await hass.async_block_till_done()
     assert [c.data["option"] for c in selects] == ["Fest"]
@@ -126,6 +126,14 @@ async def test_write_blueprint_skips_unchanged_and_unavailable(
     await hass.async_block_till_done()
     assert numbers == [] and selects == []
 
+    # Setpoint moves by less than 0.3 K: still nothing is written.
+    hass.states.async_set("switch.heizkurve_active", "off")
+    await hass.async_block_till_done()
+    hass.states.async_set("sensor.heizkurve_flow_setpoint", "26.5")
+    hass.states.async_set("switch.heizkurve_active", "on")
+    await hass.async_block_till_done()
+    assert numbers == []
+
     # A heat pump entity drops out: nothing is written, not even the others.
     hass.states.async_set("switch.heizkurve_active", "off")
     await hass.async_block_till_done()
@@ -161,10 +169,8 @@ async def test_write_blueprint_minimal_inputs(hass: HomeAssistant) -> None:
     await hass.async_block_till_done()
     hass.states.async_set("switch.heizkurve_active", "on")
     await hass.async_block_till_done()
-    # Default min_change 0.1 K: every target that differs by >= 0.1 K is written.
-    assert sorted(c.data["entity_id"][0] for c in numbers) == [
-        "number.vl_nacht", "number.vl_tag"
-    ]
+    # Default min_change 0.3 K: vl_tag (0.1 K off) stays, vl_nacht is written.
+    assert [c.data["entity_id"][0] for c in numbers] == ["number.vl_nacht"]
     assert selects == []
 
 

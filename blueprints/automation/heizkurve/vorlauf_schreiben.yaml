@@ -47,9 +47,10 @@ blueprint:
           name: Mindeständerung
           description: >
             Nur schreiben, wenn der Wert der Wärmepumpe um mindestens so viel vom
-            Sollwert abweicht. 0,1 K schreibt jede Änderung, die die Wärmepumpe
-            darstellen kann, und spart trotzdem die unveränderten Schreibzugriffe.
-          default: 0.1
+            Sollwert abweicht. 0,3 K hält die Schreibzugriffe gering, ohne dass
+            die Fußbodenheizung den Unterschied merkt; 0,1 K schreibt jede
+            Änderung, die die Wärmepumpe darstellen kann.
+          default: 0.3
           selector:
             number:
               min: 0
