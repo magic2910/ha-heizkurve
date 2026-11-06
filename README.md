@@ -10,6 +10,7 @@ Vorausschauende Heizkurve für Wärmepumpen mit Fußbodenheizung. Die Integratio
 - Solarabzug aus der PV-Prognose von Helios Forecast.
 - Heizbedarf nach Heizgrenze mit ±0,5 K Hysterese auf dem 48-h-Mittel der Vorhersage.
 - Taktsperre: erkennt taktenden Kompressor (Warmwasser ausgenommen) und gibt eine Pause vor.
+- Übertemperatur-Sperre (optionaler Blueprint): pausiert die Heizung, wenn der Raum über Soll + Komfortband liegt.
 - Störung: meldet, wenn der Sollwert länger als 5 Minuten ungültig ist.
 - Kennzahlen: Komfortabweichung, Gradstunden, Heizgradtage, Wärme pro Tag, kWh je Heizgradtag, Starts und Laufzeit.
 
@@ -174,6 +175,7 @@ HACS installiert keine Blueprints. Importiere sie über die Knöpfe. Öffnet sic
 
 - `https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/vorlauf_schreiben.yaml`
 - `https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/taktsperre.yaml`
+- `https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/uebertemperatur_sperre.yaml`
 
 **Vorlauf an Wärmepumpe schreiben**
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmagic2910%2Fha-heizkurve%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fheizkurve%2Fvorlauf_schreiben.yaml)
@@ -184,6 +186,25 @@ Schreibt stündlich den Sollwert in eine oder mehrere `number`-Entitäten, nur s
 [![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmagic2910%2Fha-heizkurve%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fheizkurve%2Ftaktsperre.yaml)
 
 Setzt während einer Taktsperre ein Select auf die Sperr-Option und danach zurück, optional mit Nachricht.
+
+**Übertemperatur-Sperre an Wärmepumpe (optional)**
+[![Blueprint importieren](https://my.home-assistant.io/badges/blueprint_import.svg)](https://my.home-assistant.io/redirect/blueprint_import/?blueprint_url=https%3A%2F%2Fgithub.com%2Fmagic2910%2Fha-heizkurve%2Fblob%2Fmain%2Fblueprints%2Fautomation%2Fheizkurve%2Fuebertemperatur_sperre.yaml)
+
+Pausiert die Heizung, wenn es im Haus zu warm ist, etwa an sonnigen Tagen. Liegt der Raum länger als die Verzögerung über Soll + Komfortband, stellt der Blueprint ein Select auf die Sperr-Option (Rotex: Raumthermostat "An"). Fällt der Raum unter Soll + Freigabe-Offset und ist die Mindest-Sperrdauer um, stellt er zurück. Unabhängig vom Schalter "Aktiv" nutzbar, auch ohne die Integration.
+
+| Eingang | Bedeutung | Standard |
+| --- | --- | --- |
+| Raumtemperatur | Sensor mit °C als Zustand, z. B. "Raumtemperatur" der Integration oder ein Mittelwert-Helfer | – |
+| Solltemperatur | input_number, number oder sensor mit °C als Zustand, z. B. die Ziel-Entität der Integration | – |
+| Komfortband | Entität mit K als Zustand (z. B. Zahl "Komfortband" der Integration) oder fester Wert | 0,5 K (fest) |
+| Select an der Wärmepumpe, Optionen | Select, das die Wärmeanforderung sperrt | An / Aus |
+| Freigabe-Offset zum Soll | freigegeben wird unter Soll + Offset; 0 = beim Soll, negativ = später; höchstens Komfortband − 0,1 K | 0 K |
+| Verzögerung bis zur Sperre | so lange muss der Raum über Soll + Komfortband liegen | 15 min |
+| Mindest-Sperrdauer | frühestens danach wird freigegeben | 60 min |
+| Andere Sperre (optional) | Binary-Sensor, z. B. "Taktsperre"; solange er an ist, gibt dieser Blueprint nicht frei | – |
+| Benachrichtigungs-Aktion (optional) | z. B. `notify.mobile_app_mein_telefon`; meldet Sperre, Freigabe und fehlende Daten | – |
+
+Beispiel: Soll 22,5 °C, Komfortband 1,0 K: Sperre über 23,5 °C, Freigabe unter 22,5 °C. Gelesen werden nur die Zustände, keine Attribute. Sind Raum, Soll oder Komfortband 30 min nicht verfügbar, wird freigegeben. Geschrieben wird nur, wenn sich das Select ändern muss. Wer Taktsperre und Übertemperatur-Sperre zusammen nutzt, trägt hier die Taktsperre als andere Sperre ein; endet die Taktsperre, während es noch zu warm ist, setzt dieser Blueprint die Sperre nach 10 s wieder. Ein von Hand gesetztes "An" hebt der Blueprint auf, sobald der Raum unter der Freigabeschwelle liegt; für eine dauerhafte Pause die Automation ausschalten.
 
 ### Inbetriebnahme
 
@@ -199,7 +220,7 @@ Setzt während einer Taktsperre ein Select auf die Sperr-Option und danach zurü
 | --- | --- |
 | Sollwert-Entitäten | `number.hpsu_can_t_vorlauf_tag`, `number.hpsu_can_t_vorlauf_nacht` |
 | Select der Heizkreis-Funktion | `select.hpsu_can_hk_funktion` (Fest / Witterungsgeführt) |
-| Select an der Wärmepumpe (Taktsperre) | `select.hpsu_can_raum_thermostat` (An / Aus) |
+| Select an der Wärmepumpe (Taktsperre, Übertemperatur-Sperre) | `select.hpsu_can_raum_thermostat` (An / Aus) |
 | Select der Betriebsart (Heizgrenze) | `select.hpsu_can_betriebsmodus` (Heizen / Sommer) |
 
 Hinweise zur Rotex:

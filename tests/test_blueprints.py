@@ -1,12 +1,18 @@
-"""Run both blueprints as automations against mocked heat pump entities."""
+"""Run the blueprints as automations against mocked heat pump entities."""
 
+import asyncio
 import shutil
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
 from homeassistant.core import HomeAssistant
 from homeassistant.setup import async_setup_component
-from pytest_homeassistant_custom_component.common import async_mock_service
+from homeassistant.util import dt as dt_util
+from pytest_homeassistant_custom_component.common import (
+    async_fire_time_changed,
+    async_mock_service,
+)
 
 BLUEPRINTS = Path(__file__).parent.parent / "blueprints" / "automation" / "heizkurve"
 
@@ -201,3 +207,137 @@ async def test_lock_blueprint(hass: HomeAssistant) -> None:
     hass.states.async_set("binary_sensor.heizkurve_cycling_lock", "off")
     await hass.async_block_till_done()
     assert selects[-1].data == {"entity_id": ["select.raum_thermostat"], "option": "Aus"}
+
+
+SPERRE_INPUTS = {
+    "room_sensor": "sensor.raum",
+    "target_entity": "input_number.soll",
+    "band_entity": "number.komfortband",
+    "target_select": "select.raum_thermostat",
+    "lock_delay": 0,
+    "notify_action": "notify.phone",
+}
+
+
+def _rooms(hass: HomeAssistant, room: str) -> None:
+    hass.states.async_set("sensor.raum", room, {"device_class": "temperature"})
+
+
+async def _tick(hass: HomeAssistant, freezer, minutes: float) -> None:
+    freezer.tick(timedelta(minutes=minutes))
+    async_fire_time_changed(hass, dt_util.utcnow())
+    await hass.async_block_till_done()
+
+
+async def test_overheat_blueprint(hass: HomeAssistant, freezer) -> None:
+    _rooms(hass, "22.6")
+    hass.states.async_set("input_number.soll", "22.5")
+    hass.states.async_set("number.komfortband", "1.0")
+    hass.states.async_set("select.raum_thermostat", "Aus")
+    selects = async_mock_service(hass, "select", "select_option")
+    notify = async_mock_service(hass, "notify", "phone")
+    await _setup(hass, "uebertemperatur_sperre.yaml", SPERRE_INPUTS)
+
+    # Inside the band: nothing.
+    _rooms(hass, "23.5")
+    await hass.async_block_till_done()
+    assert selects == []
+
+    # Above target + band: lock with notification.
+    _rooms(hass, "23.6")
+    await hass.async_block_till_done()
+    assert selects[-1].data == {"entity_id": ["select.raum_thermostat"], "option": "An"}
+    assert "23.5 °C" in notify[-1].data["message"]
+    hass.states.async_set("select.raum_thermostat", "An")
+    await hass.async_block_till_done()
+
+    # Below target, but minimum lock time (60 min) not over yet.
+    _rooms(hass, "22.4")
+    await hass.async_block_till_done()
+    assert len(selects) == 1
+    await _tick(hass, freezer, 30)
+    assert len(selects) == 1
+
+    # After 60 min the periodic check releases.
+    await _tick(hass, freezer, 35)
+    assert selects[-1].data == {"entity_id": ["select.raum_thermostat"], "option": "Aus"}
+    assert "freigegeben" in notify[-1].data["message"]
+
+
+async def test_overheat_blueprint_delay_and_fixed_band(
+    hass: HomeAssistant, freezer
+) -> None:
+    _rooms(hass, "22.0")
+    hass.states.async_set("input_number.soll", "22.5")
+    hass.states.async_set("select.raum_thermostat", "Aus")
+    selects = async_mock_service(hass, "select", "select_option")
+    inputs = {k: v for k, v in SPERRE_INPUTS.items() if k not in ("band_entity", "notify_action")}
+    await _setup(
+        hass,
+        "uebertemperatur_sperre.yaml",
+        {**inputs, "lock_delay": 15, "min_lock": 0, "release_offset": -0.5},
+    )
+
+    # Default fixed band 0.5 K: above 23.0 for 15 min locks.
+    _rooms(hass, "23.1")
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 10)
+    assert selects == []
+    await _tick(hass, freezer, 6)
+    assert selects[-1].data["option"] == "An"
+    hass.states.async_set("select.raum_thermostat", "An")
+
+    # Release offset -0.5 K: not yet at 22.1, released below 22.0.
+    _rooms(hass, "22.1")
+    await hass.async_block_till_done()
+    assert len(selects) == 1
+    _rooms(hass, "21.9")
+    await hass.async_block_till_done()
+    assert selects[-1].data["option"] == "Aus"
+
+
+async def test_overheat_blueprint_other_lock_and_missing_data(
+    hass: HomeAssistant, freezer
+) -> None:
+    _rooms(hass, "23.6")
+    hass.states.async_set("input_number.soll", "22.5")
+    hass.states.async_set("number.komfortband", "1.0")
+    hass.states.async_set("select.raum_thermostat", "An")
+    hass.states.async_set("binary_sensor.taktsperre", "on")
+    selects = async_mock_service(hass, "select", "select_option")
+    notify = async_mock_service(hass, "notify", "phone")
+    await _setup(
+        hass,
+        "uebertemperatur_sperre.yaml",
+        {**SPERRE_INPUTS, "min_lock": 0, "other_lock": "binary_sensor.taktsperre"},
+    )
+
+    # Other lock active: no release although the room is cold.
+    _rooms(hass, "22.0")
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 5)
+    assert selects == []
+
+    # Other lock ends while still too warm: its blueprint resets, this one re-locks.
+    _rooms(hass, "23.7")
+    await hass.async_block_till_done()
+    assert selects == []
+    hass.states.async_set("binary_sensor.taktsperre", "off")
+    hass.states.async_set("select.raum_thermostat", "Aus")
+    # Not block_till_done: the blueprint is waiting in its 10 s delay.
+    for _ in range(5):
+        await asyncio.sleep(0)
+    assert selects == []
+    await _tick(hass, freezer, 0.2)
+    assert selects[-1].data["option"] == "An"
+    hass.states.async_set("select.raum_thermostat", "An")
+
+    # Room sensor gone for 30 min: release (fail-safe).
+    count = len(selects)
+    _rooms(hass, "unavailable")
+    await hass.async_block_till_done()
+    await _tick(hass, freezer, 20)
+    assert len(selects) == count
+    await _tick(hass, freezer, 11)
+    assert selects[-1].data["option"] == "Aus"
+    assert "nicht verfügbar" in notify[-1].data["message"]
