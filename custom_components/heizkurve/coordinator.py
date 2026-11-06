@@ -22,11 +22,14 @@ from homeassistant.util import dt as dt_util
 from . import calc
 from .const import (
     COMPRESSOR_OFF_DELAY,
+    COMPRESSOR_RESTORE_MAX_AGE,
     CONF_ABS_MIN_FLOW,
     CONF_COMPARISON,
     CONF_COMPRESSOR,
+    CONF_DHW_VALVE,
     CONF_HEAT_METER,
     CONF_MODE,
+    CONF_MODE_DEFROST,
     CONF_MODE_DHW,
     CONF_OUTDOOR,
     CONF_OUTDOOR_FALLBACK,
@@ -35,7 +38,10 @@ from .const import (
     CONF_TARGET,
     CONF_WEATHER,
     DEFAULT_ABS_MIN_FLOW,
+    DEFAULT_MODE_DEFROST,
     DEFAULT_MODE_DHW,
+    DEFROST_GRACE,
+    DHW_VALVE_THRESHOLD,
     DOMAIN,
     FAULT_DELAY,
     FORECAST_INTERVAL,
@@ -117,7 +123,9 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
         self._forecast_source: str | None = None
         self._forecast_updated: datetime | None = None
         self._fault = calc.DelayedFlag(FAULT_DELAY)
-        self._compressor = calc.CompressorTracker(off_delay=COMPRESSOR_OFF_DELAY)
+        self._compressor = calc.CompressorTracker(
+            off_delay=COMPRESSOR_OFF_DELAY, defrost_grace=DEFROST_GRACE
+        )
         self._kpi_day: str | None = None
         self._degree_hours = 0.0
         self._degree_days = 0.0
@@ -143,6 +151,7 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
             CONF_PV_FORECAST,
             CONF_COMPRESSOR,
             CONF_MODE,
+            CONF_DHW_VALVE,
             CONF_HEAT_METER,
             CONF_COMPARISON,
         ):
@@ -205,6 +214,19 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
         self._compressor.runtime_today = timedelta(
             seconds=float(comp.get("runtime_today_s", 0))
         )
+        # Resume a run that was going on before a restart or reload, so the
+        # restart itself is not counted as a compressor start.
+        saved = _parse(comp.get("saved"))
+        run_since = _parse(comp.get("run_since"))
+        if (
+            comp.get("running")
+            and run_since is not None
+            and saved is not None
+            and dt_util.utcnow() - saved <= COMPRESSOR_RESTORE_MAX_AGE
+        ):
+            self._compressor.running = True
+            self._compressor.run_since = run_since
+            self._compressor.hold_until = _parse(comp.get("hold_until"))
 
     def _serialize(self) -> dict[str, Any]:
         return {
@@ -223,6 +245,10 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
                 "starts": [_iso(d) for d in self._compressor.starts],
                 "day": self._compressor.day,
                 "runtime_today_s": self._compressor.runtime_today.total_seconds(),
+                "running": self._compressor.running,
+                "run_since": _iso(self._compressor.run_since),
+                "hold_until": _iso(self._compressor.hold_until),
+                "saved": _iso(dt_util.utcnow()),
             },
         }
 
@@ -377,7 +403,15 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
             return False
         mode = self.hass.states.get(self.conf.get(CONF_MODE) or "")
         dhw = self.conf.get(CONF_MODE_DHW) or DEFAULT_MODE_DHW
-        return not (mode is not None and mode.state == dhw)
+        if mode is not None and mode.state == dhw:
+            return False
+        valve = self._float(self.conf.get(CONF_DHW_VALVE))
+        return not (valve is not None and valve > DHW_VALVE_THRESHOLD)
+
+    def _defrosting(self) -> bool:
+        mode = self.hass.states.get(self.conf.get(CONF_MODE) or "")
+        value = self.conf.get(CONF_MODE_DEFROST) or DEFAULT_MODE_DEFROST
+        return mode is not None and mode.state == value
 
     # ----- the calculation -----
 
@@ -523,7 +557,7 @@ class HeizkurveCoordinator(DataUpdateCoordinator[HeizkurveData]):
             return
         heating = self._compressor_heating()
         if heating is not None:
-            self._compressor.update(heating, now)
+            self._compressor.update(heating, now, defrost=self._defrosting())
         data.compressor_heating = self._compressor.running if heating is not None else None
         data.starts_60min = self._compressor.starts_within(now, STARTS_WINDOW)
         data.starts_today = self._compressor.starts_today(dt_util.as_local(now))

@@ -9,7 +9,7 @@ Vorausschauende Heizkurve für Wärmepumpen mit Fußbodenheizung. Die Integratio
 - Raumkorrektur (P-Anteil) und I-Anteil mit Anti-Windup, der nur läuft, solange die Regelung aktiv ist.
 - Solarabzug aus der PV-Prognose von Helios Forecast.
 - Heizbedarf nach Heizgrenze mit ±0,5 K Hysterese auf dem 48-h-Mittel der Vorhersage.
-- Taktsperre: erkennt taktenden Kompressor (Warmwasser ausgenommen) und gibt eine Pause vor.
+- Taktsperre: erkennt taktenden Kompressor (Warmwasser und Abtauen ausgenommen) und gibt eine Pause vor.
 - Übertemperatur-Sperre (optionaler Blueprint): pausiert die Heizung, wenn der Raum über Soll + Komfortband liegt.
 - Störung: meldet, wenn der Sollwert länger als 5 Minuten ungültig ist.
 - Kennzahlen: Komfortabweichung, Gradstunden, Heizgradtage, Wärme pro Tag, kWh je Heizgradtag, Starts und Laufzeit.
@@ -47,7 +47,8 @@ Der Dialog hat drei Schritte. Nur die Außentemperatur ist Pflicht. Fehlt ein op
 | Wettervorhersage | nein | jede `weather`-Entität mit stündlicher Vorhersage; mehrere in Reihenfolge als Fallback | keine Vorhersage, effektive = gemessene Außentemperatur; Heizbedarf nach aktueller Außentemperatur |
 | PV-Prognose | nein | Helios Forecast: der Sensor "Power now" einer Anlage, z. B. `sensor.dach_pv_anlage_power_now` (Attribut `forecast` mit 15-Minuten-Werten in Watt) | kein Solarabzug |
 | Kompressorstatus | nein | Binary-Sensor der Wärmepumpe | keine Taktsperre, keine Starts und Laufzeit |
-| Betriebsart | nein | Sensor oder Select der Wärmepumpe mit eigenem Wert für Warmwasser | Warmwasser-Läufe zählen als Starts |
+| Betriebsart | nein | Sensor oder Select der Wärmepumpe mit eigenen Werten für Warmwasser (Standard "Warmwasserbereitung") und Abtauen (Standard "Abtauen") | Warmwasser-Läufe und Wiederanläufe nach dem Abtauen zählen als Starts |
+| Warmwasser-Ventil | nein | Stellung des 3-Wege-Ventils in Prozent, über 50 = Warmwasser | Warmwasser wird nur über die Betriebsart erkannt |
 | Wärmemengenzähler | nein | Energiesensor der Wärmepumpe oder externer Wärmemengenzähler | keine Wärme pro Tag, keine kWh je Heizgradtag |
 | Vergleichskurve | nein | jeder Vorlauf-Sensor, z. B. die Kurve der Wärmepumpe selbst | kein Differenz-Sensor |
 
@@ -128,6 +129,8 @@ Alle Parameter sind Zahl-Entitäten am Gerät "Heizkurve" und wirken sofort. Par
 | Takt-Starts pro Stunde | 3 | So viele Kompressorstarts in 60 Minuten lösen eine Sperre aus. |
 | Takt-Pause | 60 min | Dauer der Sperre. Sie endet früher, wenn der Raum mehr als 0,5 K unter das Komfortband fällt. |
 | Taktsperren max pro Tag | 4 | Danach keine weitere Sperre bis Mitternacht. |
+
+Was als Start zählt: Ein Lauf beginnt, wenn der Kompressor für die Heizung anläuft. Er endet erst, wenn der Kompressor mindestens 3 Minuten aus ist; kürzere Pausen (z. B. Verbindungsabbrüche) gehören zum selben Lauf. Läufe für Warmwasser zählen nicht (Betriebsart Warmwasser oder Warmwasser-Ventil über 50 %). Meldet die Betriebsart "Abtauen", bleibt der laufende Lauf während des Abtauens und noch 10 Minuten danach bestehen: Der Stopp vor dem Abtauen, die kurzen Läufe währenddessen und der Wiederanlauf danach sind kein neuer Start, die Laufzeit läuft durch. Der Laufzustand wird gespeichert, ein Neustart von Home Assistant oder der Integration (bis 15 Minuten) zählt deshalb ebenfalls nicht als Start.
 
 ### Werte ermitteln
 
@@ -222,6 +225,12 @@ Beispiel: Soll 22,5 °C, Komfortband 1,0 K: Sperre über 23,5 °C, Freigabe unte
 | Select der Heizkreis-Funktion | `select.hpsu_can_hk_funktion` (Fest / Witterungsgeführt) |
 | Select an der Wärmepumpe (Taktsperre, Übertemperatur-Sperre) | `select.hpsu_can_raum_thermostat` (An / Aus) |
 | Select der Betriebsart (Heizgrenze) | `select.hpsu_can_betriebsmodus` (Heizen / Sommer) |
+
+| Integrations-Einstellung | Entität |
+| --- | --- |
+| Kompressorstatus | `binary_sensor.hpsu_can_status_kompressor` |
+| Betriebsart | `sensor.hpsu_can_betriebsart` (Werte "Warmwasserbereitung", "Abtauen") |
+| Warmwasser-Ventil | `sensor.hpsu_can_bpv` (100 = Warmwasser, 0 = Heizung) |
 
 Hinweise zur Rotex:
 

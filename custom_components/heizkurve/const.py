@@ -19,12 +19,17 @@ CONF_ABS_MAX_FLOW = "absolute_max_flow"
 CONF_COMPRESSOR = "compressor_sensor"
 CONF_MODE = "mode_entity"
 CONF_MODE_DHW = "mode_dhw_value"
+CONF_MODE_DEFROST = "mode_defrost_value"
+CONF_DHW_VALVE = "dhw_valve_sensor"
 CONF_HEAT_METER = "heat_meter_sensor"
 CONF_COMPARISON = "comparison_sensor"
 
 DEFAULT_ABS_MIN_FLOW = 25.0
 DEFAULT_ABS_MAX_FLOW = 45.0
 DEFAULT_MODE_DHW = "Warmwasserbereitung"
+DEFAULT_MODE_DEFROST = "Abtauen"
+# Valve position above this (percent) means hot water.
+DHW_VALVE_THRESHOLD = 50.0
 
 
 UPDATE_INTERVAL = timedelta(minutes=1)
@@ -34,6 +39,10 @@ FORECAST_RETRY_INTERVAL = timedelta(minutes=1)
 INTEGRAL_INTERVAL = timedelta(minutes=10)
 FAULT_DELAY = timedelta(minutes=5)
 COMPRESSOR_OFF_DELAY = timedelta(minutes=3)
+# After a defrost, a restart within this time continues the same run.
+DEFROST_GRACE = timedelta(minutes=10)
+# The stored compressor run is only resumed if it is at most this old.
+COMPRESSOR_RESTORE_MAX_AGE = timedelta(minutes=15)
 STARTS_WINDOW = timedelta(minutes=60)
 
 STORAGE_VERSION = 1

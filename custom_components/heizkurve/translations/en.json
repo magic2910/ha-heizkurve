@@ -38,14 +38,18 @@
           "mode_entity": "Operating mode",
           "mode_dhw_value": "Operating mode value for hot water",
           "heat_meter_sensor": "Heat meter",
-          "comparison_sensor": "Comparison curve"
+          "comparison_sensor": "Comparison curve",
+          "mode_defrost_value": "Operating mode value for defrost",
+          "dhw_valve_sensor": "Hot water valve (3-way valve)"
         },
         "data_description": {
           "absolute_min_flow": "Plant limit; the min/max flow numbers can only move inside these limits.",
           "compressor_sensor": "Optional. Enables the cycling lock and the runtime/start figures.",
-          "mode_entity": "Optional. Hot water runs are not counted as starts.",
+          "mode_entity": "Optional. Hot water runs are not counted as starts, defrosts do not interrupt a run.",
           "heat_meter_sensor": "Optional. For heat per day and kWh per heating degree day.",
-          "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve."
+          "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve.",
+          "mode_defrost_value": "During a defrost and for 10 min afterwards a restart does not count as a new start.",
+          "dhw_valve_sensor": "Optional. Position in percent; above 50 means hot water (Rotex: sensor.hpsu_can_bpv). Complements the operating mode, e.g. at the end of a hot water run."
         }
       }
     },
@@ -90,14 +94,18 @@
           "mode_entity": "Operating mode",
           "mode_dhw_value": "Operating mode value for hot water",
           "heat_meter_sensor": "Heat meter",
-          "comparison_sensor": "Comparison curve"
+          "comparison_sensor": "Comparison curve",
+          "mode_defrost_value": "Operating mode value for defrost",
+          "dhw_valve_sensor": "Hot water valve (3-way valve)"
         },
         "data_description": {
           "absolute_min_flow": "Plant limit; the min/max flow numbers can only move inside these limits.",
           "compressor_sensor": "Optional. Enables the cycling lock and the runtime/start figures.",
-          "mode_entity": "Optional. Hot water runs are not counted as starts.",
+          "mode_entity": "Optional. Hot water runs are not counted as starts, defrosts do not interrupt a run.",
           "heat_meter_sensor": "Optional. For heat per day and kWh per heating degree day.",
-          "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve."
+          "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve.",
+          "mode_defrost_value": "During a defrost and for 10 min afterwards a restart does not count as a new start.",
+          "dhw_valve_sensor": "Optional. Position in percent; above 50 means hot water (Rotex: sensor.hpsu_can_bpv). Complements the operating mode, e.g. at the end of a hot water run."
         }
       }
     },

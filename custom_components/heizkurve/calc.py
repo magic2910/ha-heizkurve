@@ -241,17 +241,21 @@ class DelayedFlag:
 class CompressorTracker:
     """Compressor runs for space heating, with an off-delay.
 
-    Short gaps (defrost, CAN dropouts) shorter than off_delay do not count as
-    a new start.
+    Short gaps (CAN dropouts) shorter than off_delay do not count as a new
+    start. During a defrost and for defrost_grace afterwards the run is held,
+    so the stop before a defrost, the short defrost runs and the restart
+    afterwards all belong to the same run.
     """
 
     off_delay: timedelta = timedelta(minutes=3)
+    defrost_grace: timedelta = timedelta(minutes=10)
     running: bool = False
     starts: list[datetime] = field(default_factory=list)
     run_since: datetime | None = None
     runtime_today: timedelta = timedelta()
     day: str | None = None
     _off_since: datetime | None = None
+    hold_until: datetime | None = None
 
     def _roll_day(self, now: datetime) -> None:
         today = now.date().isoformat()
@@ -264,9 +268,16 @@ class CompressorTracker:
                     now.replace(hour=0, minute=0, second=0, microsecond=0),
                 )
 
-    def update(self, heating: bool, now: datetime) -> None:
-        """Feed the raw state (compressor on and not hot water)."""
+    def update(self, heating: bool, now: datetime, defrost: bool = False) -> None:
+        """Feed the raw state (compressor on and not hot water).
+
+        defrost: the heat pump currently reports a defrost.
+        """
         self._roll_day(now)
+        if defrost and self.running:
+            self.hold_until = now + self.defrost_grace
+        if self.hold_until is not None and now >= self.hold_until:
+            self.hold_until = None
         if heating:
             self._off_since = None
             if not self.running:
@@ -278,7 +289,7 @@ class CompressorTracker:
             return
         if self._off_since is None:
             self._off_since = now
-        if now - self._off_since >= self.off_delay:
+        if self.hold_until is None and now - self._off_since >= self.off_delay:
             self.running = False
             if self.run_since is not None:
                 self.runtime_today += self._off_since - self.run_since
