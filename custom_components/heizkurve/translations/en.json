@@ -49,12 +49,13 @@
           "heat_meter_sensor": "Optional. For heat per day and kWh per heating degree day.",
           "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve.",
           "mode_defrost_value": "During a defrost and for 10 min afterwards a restart does not count as a new start.",
-          "dhw_valve_sensor": "Optional. Position in percent; above 50 means hot water (Rotex: sensor.hpsu_can_bpv). Complements the operating mode, e.g. at the end of a hot water run."
+          "dhw_valve_sensor": "Optional. Sensor with the unit % (valve position); above 50 means hot water (Rotex: sensor.hpsu_can_bpv). Complements the operating mode, e.g. at the end of a hot water run."
         }
       }
     },
     "error": {
-      "flow_limits": "The minimum flow must be below the maximum flow."
+      "flow_limits": "The minimum flow must be below the maximum flow.",
+      "valve_unit": "The hot water valve must be a sensor with the unit % (valve position), e.g. sensor.hpsu_can_bpv."
     }
   },
   "options": {
@@ -105,12 +106,13 @@
           "heat_meter_sensor": "Optional. For heat per day and kWh per heating degree day.",
           "comparison_sensor": "Optional. Another flow sensor to compare with, e.g. your previous heating curve.",
           "mode_defrost_value": "During a defrost and for 10 min afterwards a restart does not count as a new start.",
-          "dhw_valve_sensor": "Optional. Position in percent; above 50 means hot water (Rotex: sensor.hpsu_can_bpv). Complements the operating mode, e.g. at the end of a hot water run."
+          "dhw_valve_sensor": "Optional. Sensor with the unit % (valve position); above 50 means hot water (Rotex: sensor.hpsu_can_bpv). Complements the operating mode, e.g. at the end of a hot water run."
         }
       }
     },
     "error": {
-      "flow_limits": "The minimum flow must be below the maximum flow."
+      "flow_limits": "The minimum flow must be below the maximum flow.",
+      "valve_unit": "The hot water valve must be a sensor with the unit % (valve position), e.g. sensor.hpsu_can_bpv."
     }
   },
   "entity": {
