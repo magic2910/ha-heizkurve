@@ -1,0 +1,325 @@
+blueprint:
+  name: Heizkurve – Übertemperatur-Sperre an Wärmepumpe
+  description: >
+    Pausiert die Heizung, wenn es im Haus zu warm ist: Liegt die Raumtemperatur
+    länger als die Verzögerung über **Soll + Komfortband**, stellt der Blueprint
+    ein Select der Wärmepumpe auf die Sperr-Option (Rotex HPSU:
+    select.hpsu_can_raum_thermostat auf "An"). Fällt die Raumtemperatur unter
+    **Soll + Freigabe-Offset** (Standard 0 K, also unter das Soll) und ist die
+    Mindest-Sperrdauer um, stellt er zurück.
+
+
+    Benötigte Daten: eine Raumtemperatur in °C, eine Solltemperatur in °C und
+    ein Komfortband in K (als Entität oder fester Wert). Alle drei müssen einen
+    Zahlenwert als Zustand haben, Attribute werden nicht gelesen. Funktioniert
+    mit der Integration Heizkurve (Raumtemperatur-Sensor, Zieltemperatur,
+    Komfortband) und genauso mit eigenen Entitäten.
+
+
+    Absicherung: Geschrieben wird nur, wenn sich das Select wirklich ändern muss.
+    Sind Raum, Soll oder Komfortband 30 min nicht verfügbar, wird freigegeben
+    (lieber heizen als auskühlen). Solange eine andere Sperre (z. B. die
+    Taktsperre) aktiv ist, gibt dieser Blueprint nicht frei.
+
+
+    Rotex HPSU: "An" bedeutet ohne Kontakt an J16 laut RoCon-Anleitung "keine
+    Wärmeanforderung". Der Heizkreis pausiert, Warmwasser und Frostschutz sind
+    nicht betroffen. Hängt an J16 ein echter Raumthermostat, diesen Blueprint
+    nicht verwenden.
+  domain: automation
+  source_url: https://github.com/magic2910/ha-heizkurve/blob/main/blueprints/automation/heizkurve/uebertemperatur_sperre.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+  input:
+    raum:
+      name: Raum und Soll
+      input:
+        room_sensor:
+          name: Raumtemperatur
+          description: >
+            Sensor mit der Raumtemperatur in °C als Zustand (Zahl). Mit der
+            Integration Heizkurve z. B. deren Sensor "Raumtemperatur", sonst ein
+            Mittelwert-Sensor über mehrere Räume (Helfer "Min/Max", Typ Mittelwert)
+            oder ein einzelner Thermometer-Sensor.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: temperature
+        target_entity:
+          name: Solltemperatur
+          description: >
+            Entität mit der Raum-Solltemperatur in °C als Zustand (Zahl):
+            input_number, number oder sensor. Mit der Integration Heizkurve die
+            dort eingestellte Ziel-Entität bzw. deren Zahl "Zieltemperatur".
+          selector:
+            entity:
+              filter:
+                - domain: [input_number, number, sensor]
+        band_entity:
+          name: Komfortband (Entität, optional)
+          description: >
+            Entität mit dem Komfortband in K als Zustand (Zahl), z. B. die Zahl
+            "Komfortband" der Integration Heizkurve. Gesperrt wird oberhalb von
+            Soll + Komfortband. Leer lassen, um den festen Wert unten zu nutzen.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: [input_number, number, sensor]
+        band_fixed:
+          name: Komfortband (fester Wert)
+          description: Wird nur genutzt, wenn keine Komfortband-Entität gewählt ist.
+          default: 0.5
+          selector:
+            number:
+              min: 0
+              max: 3
+              step: 0.1
+              unit_of_measurement: K
+              mode: box
+    waermepumpe:
+      name: Wärmepumpe
+      input:
+        target_select:
+          name: Select an der Wärmepumpe
+          description: >
+            Select, das die Wärmeanforderung sperrt. Rotex HPSU:
+            select.hpsu_can_raum_thermostat (Optionen "Aus" / "An").
+          selector:
+            entity:
+              domain: select
+        lock_option:
+          name: Option während der Sperre
+          description: Rotex HPSU "An" (Raumthermostat ausgewertet, J16 offen = keine Wärmeanforderung).
+          default: An
+          selector:
+            text:
+        normal_option:
+          name: Option nach der Sperre
+          description: Rotex HPSU "Aus".
+          default: Aus
+          selector:
+            text:
+    regelung:
+      name: Schwellen und Zeiten
+      input:
+        release_offset:
+          name: Freigabe-Offset zum Soll
+          description: >
+            Freigegeben wird, sobald die Raumtemperatur unter Soll + Offset fällt.
+            0 K = Freigabe beim Soll (empfohlen, 1 Komfortband Hysterese).
+            Negativ = später freigeben, z. B. minus Komfortband für "erst unter
+            Soll − Komfortband". Höchstens Komfortband − 0,1 K, sonst wird
+            automatisch begrenzt.
+          default: 0
+          selector:
+            number:
+              min: -3
+              max: 3
+              step: 0.1
+              unit_of_measurement: K
+              mode: box
+        lock_delay:
+          name: Verzögerung bis zur Sperre
+          description: So lange muss der Raum ununterbrochen über Soll + Komfortband liegen.
+          default: 15
+          selector:
+            number:
+              min: 0
+              max: 120
+              unit_of_measurement: min
+              mode: box
+        min_lock:
+          name: Mindest-Sperrdauer
+          description: >
+            Frühestens nach dieser Zeit wird wieder freigegeben, auch wenn der
+            Raum schon kälter ist. Verhindert häufiges Umschalten bei wechselnder
+            Sonne und schont den CAN-Bus.
+          default: 60
+          selector:
+            number:
+              min: 0
+              max: 360
+              unit_of_measurement: min
+              mode: box
+    optional:
+      name: Andere Sperre und Benachrichtigung (optional)
+      collapsed: true
+      input:
+        other_lock:
+          name: Andere Sperre
+          description: >
+            Binary-Sensor einer anderen Sperre, die dasselbe Select nutzt, z. B.
+            "Taktsperre" der Integration Heizkurve. Solange er an ist, gibt dieser
+            Blueprint nicht frei. Endet die andere Sperre und ist es noch zu warm,
+            wird die Sperre nach 10 s wieder gesetzt.
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+        notify_action:
+          name: Benachrichtigungs-Aktion
+          description: >
+            z. B. notify.mobile_app_mein_telefon. Meldet Sperre, Freigabe und
+            Freigabe wegen fehlender Daten. Leer lassen für keine Nachricht.
+          default: ""
+          selector:
+            text:
+
+mode: queued
+max: 5
+
+trigger_variables:
+  room_sensor: !input room_sensor
+  target_entity: !input target_entity
+  band_entity: !input band_entity
+  band_fixed: !input band_fixed
+  release_offset: !input release_offset
+
+triggers:
+  # Zu warm (Raum über Soll + Komfortband, für die Verzögerung)
+  - trigger: template
+    id: warm
+    value_template: >
+      {% set r = states(room_sensor) | float(none) %}
+      {% set t = states(target_entity) | float(none) %}
+      {% set b = (states(band_entity) | float(none)) if band_entity else (band_fixed | float) %}
+      {{ r is not none and t is not none and b is not none and r > t + b }}
+    for:
+      minutes: !input lock_delay
+  # Kalt genug (Raum unter Soll + Freigabe-Offset)
+  - trigger: template
+    id: cool
+    value_template: >
+      {% set r = states(room_sensor) | float(none) %}
+      {% set t = states(target_entity) | float(none) %}
+      {% set b = (states(band_entity) | float(none)) if band_entity else (band_fixed | float) %}
+      {{ r is not none and t is not none and b is not none
+         and r < [t + release_offset | float, t + b - 0.1] | min }}
+  # Daten fehlen
+  - trigger: template
+    id: missing
+    value_template: >
+      {% set b = states(band_entity) if band_entity else band_fixed %}
+      {{ not (is_number(states(room_sensor)) and is_number(states(target_entity))
+              and is_number(b)) }}
+    for:
+      minutes: 30
+  # Mindest-Sperrdauer abgelaufen? Verpasste Ereignisse?
+  - trigger: time_pattern
+    id: check
+    minutes: /5
+  - trigger: homeassistant
+    id: start
+    event: start
+  - trigger: state
+    id: other_off
+    entity_id: !input other_lock
+    to: "off"
+
+variables:
+  target_select: !input target_select
+  lock_option: !input lock_option
+  normal_option: !input normal_option
+  min_lock: !input min_lock
+  other_lock: !input other_lock
+  notify_action: !input notify_action
+
+actions:
+  # Andere Sperre endete: deren Blueprint stellt gerade zurück, danach neu bewerten.
+  - if:
+      - condition: template
+        value_template: "{{ trigger.id == 'other_off' }}"
+    then:
+      - delay:
+          seconds: 10
+  - variables:
+      room: "{{ states(room_sensor) | float(none) }}"
+      target: "{{ states(target_entity) | float(none) }}"
+      band: >
+        {{ (states(band_entity) | float(none)) if band_entity else (band_fixed | float) }}
+      data_ok: "{{ room is not none and target is not none and band is not none }}"
+      lock_above: "{{ (target + band) | round(2) if data_ok else none }}"
+      release_below: >
+        {{ ([target + release_offset | float, target + band - 0.1] | min) | round(2)
+           if data_ok else none }}
+      select_ok: "{{ has_value(target_select) }}"
+      locked: "{{ is_state(target_select, lock_option) }}"
+      locked_min: >
+        {{ ((now() - states[target_select].last_changed).total_seconds() / 60) | round(1)
+           if states[target_select] is not none else 0 }}
+      other_active: "{{ other_lock | length > 0 and is_state(other_lock, 'on') }}"
+  - choose:
+      # Daten fehlen 30 min: freigeben
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ trigger.id == 'missing' and select_ok and locked
+                 and not other_active and not data_ok }}
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: "{{ target_select }}"
+            data:
+              option: "{{ normal_option }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: Wärmepumpe
+                  message: >
+                    Übertemperatur-Sperre aufgehoben: Raum-, Soll- oder
+                    Komfortband-Wert nicht verfügbar. Heizung wieder freigegeben.
+                continue_on_error: true
+
+      # Zu warm: sperren
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ select_ok and not locked and data_ok and room > lock_above
+                 and trigger.id in ['warm', 'start', 'other_off'] }}
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: "{{ target_select }}"
+            data:
+              option: "{{ lock_option }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: Wärmepumpe
+                  message: >
+                    Raum {{ room }} °C über {{ lock_above }} °C (Soll + Komfortband):
+                    Heizung pausiert. Freigabe unter {{ release_below }} °C,
+                    frühestens in {{ min_lock | int }} min.
+                continue_on_error: true
+
+      # Kalt genug und Mindest-Sperrdauer um: freigeben
+      - conditions:
+          - condition: template
+            value_template: >
+              {{ select_ok and locked and not other_active and data_ok
+                 and room < release_below and locked_min >= min_lock | float }}
+        sequence:
+          - action: select.select_option
+            target:
+              entity_id: "{{ target_select }}"
+            data:
+              option: "{{ normal_option }}"
+          - if:
+              - condition: template
+                value_template: "{{ notify_action | length > 0 }}"
+            then:
+              - action: "{{ notify_action }}"
+                data:
+                  title: Wärmepumpe
+                  message: >
+                    Raum {{ room }} °C unter {{ release_below }} °C:
+                    Heizung wieder freigegeben.
+                continue_on_error: true
