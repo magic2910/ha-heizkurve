@@ -6,7 +6,8 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from homeassistant.core import HomeAssistant
+from homeassistant.const import EVENT_HOMEASSISTANT_STARTED
+from homeassistant.core import CoreState, HomeAssistant
 from homeassistant.setup import async_setup_component
 from homeassistant.util import dt as dt_util
 from pytest_homeassistant_custom_component.common import (
@@ -178,6 +179,36 @@ async def test_write_blueprint_minimal_inputs(hass: HomeAssistant) -> None:
     # Default min_change 0.3 K: vl_tag (0.1 K off) stays, vl_nacht is written.
     assert [c.data["entity_id"][0] for c in numbers] == ["number.vl_nacht"]
     assert selects == []
+
+
+async def test_write_blueprint_waits_after_start(hass: HomeAssistant) -> None:
+    _heat_pump(hass)
+    hass.states.async_set("switch.heizkurve_active", "on")
+    hass.states.async_set("select.hk_funktion", "Fest")
+    hass.states.async_set("sensor.heizkurve_flow_setpoint", "28.0")
+    numbers = async_mock_service(hass, "number", "set_value")
+
+    # HA start (automation set up while starting) with a not yet settled
+    # setpoint: nothing is written right away.
+    hass.set_state(CoreState.not_running)
+    await _setup(hass, "vorlauf_schreiben.yaml", WRITE_INPUTS)
+    hass.set_state(CoreState.running)
+    hass.bus.async_fire(EVENT_HOMEASSISTANT_STARTED)
+    # The run now sits in its delay, so async_block_till_done would wait for it.
+    for _ in range(20):
+        await asyncio.sleep(0)
+    assert hass.states.get("automation.test").attributes["current"] == 1
+    assert numbers == []
+
+    # After the default 5 minutes the value valid then is written.
+    hass.states.async_set("sensor.heizkurve_flow_setpoint", "26.8")
+    async_fire_time_changed(hass, dt_util.utcnow() + timedelta(minutes=5, seconds=1))
+    await hass.async_block_till_done()
+    assert sorted((c.data["entity_id"][0], c.data["value"]) for c in numbers) == [
+        ("number.vl_extra", 26.8),
+        ("number.vl_nacht", 26.8),
+        ("number.vl_tag", 26.8),
+    ]
 
 
 async def test_lock_blueprint(hass: HomeAssistant) -> None:
