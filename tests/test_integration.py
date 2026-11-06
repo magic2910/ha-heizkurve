@@ -18,7 +18,9 @@ from custom_components.heizkurve.const import (
     CONF_ABS_MIN_FLOW,
     CONF_COMPARISON,
     CONF_COMPRESSOR,
+    CONF_DHW_VALVE,
     CONF_MODE,
+    CONF_MODE_DEFROST,
     CONF_MODE_DHW,
     CONF_OUTDOOR,
     CONF_OUTDOOR_FALLBACK,
@@ -66,6 +68,7 @@ async def test_config_flow_minimal(hass: HomeAssistant) -> None:
         CONF_ABS_MIN_FLOW: 25,
         CONF_ABS_MAX_FLOW: 45,
         CONF_MODE_DHW: "Warmwasserbereitung",
+        CONF_MODE_DEFROST: "Abtauen",
     }
     await hass.async_block_till_done()
 
@@ -91,6 +94,7 @@ def full_entry(hass: HomeAssistant, hass_storage) -> MockConfigEntry:
     hass.states.async_set("input_number.target", "23.0")
     hass.states.async_set("binary_sensor.compressor", "off")
     hass.states.async_set("sensor.mode", "Heizen")
+    hass.states.async_set("sensor.bpv", "0")
     hass.states.async_set("sensor.old_curve", "24.5", TEMP)
     entry = MockConfigEntry(
         domain=DOMAIN,
@@ -105,6 +109,7 @@ def full_entry(hass: HomeAssistant, hass_storage) -> MockConfigEntry:
             CONF_COMPRESSOR: "binary_sensor.compressor",
             CONF_MODE: "sensor.mode",
             CONF_MODE_DHW: "Warmwasserbereitung",
+            CONF_DHW_VALVE: "sensor.bpv",
             CONF_COMPARISON: "sensor.old_curve",
         },
     )
@@ -201,6 +206,11 @@ async def test_cycling_lock_and_dhw_excluded(
         await hass.async_block_till_done()
 
     await cycle(5, mode="Warmwasserbereitung")
+    assert hass.states.get(starts).state == "0"
+    # End of a hot water run: mode already "Bereitschaft", valve still on DHW.
+    hass.states.async_set("sensor.bpv", "100")
+    await cycle(1, mode="Bereitschaft")
+    hass.states.async_set("sensor.bpv", "0")
     assert hass.states.get(starts).state == "0"
     await cycle(5)
     await cycle(5)
@@ -378,3 +388,41 @@ async def test_options_flow_can_remove_a_source(hass: HomeAssistant, full_entry)
     # 23 + 0.3 * 12.3 - 0.5, no room correction any more
     state = hass.states.get(_entity(hass, "flow_setpoint"))
     assert float(state.state) == round(23 + 0.3 * 12.3 - 0.5, 1)
+
+
+async def test_defrost_and_restart_are_no_starts(
+    hass: HomeAssistant, full_entry, hass_storage, freezer
+) -> None:
+    # A run was going on before the restart and was saved a minute ago.
+    now = dt_util.utcnow()
+    hass_storage[f"{DOMAIN}.{full_entry.entry_id}"]["data"]["compressor"] = {
+        "starts": [(now - timedelta(minutes=30)).isoformat()],
+        "day": dt_util.as_local(now).date().isoformat(),
+        "runtime_today_s": 0,
+        "running": True,
+        "run_since": (now - timedelta(minutes=30)).isoformat(),
+        "saved": (now - timedelta(minutes=1)).isoformat(),
+    }
+    hass.states.async_set("binary_sensor.compressor", "on")
+    full_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(full_entry.entry_id)
+    await hass.async_block_till_done()
+    starts = _entity(hass, "starts_today")
+    assert hass.states.get(starts).state == "1"
+
+    async def step(minutes: float, compressor: str, mode: str) -> None:
+        freezer.tick(timedelta(minutes=minutes))
+        hass.states.async_set("sensor.mode", mode)
+        hass.states.async_set("binary_sensor.compressor", compressor)
+        async_fire_time_changed(hass)
+        await hass.async_block_till_done()
+
+    await step(1, "off", "Heizen")
+    await step(0.5, "off", "Abtauen")
+    await step(1.5, "on", "Abtauen")
+    await step(1, "off", "Abtauen")
+    await step(2, "off", "Heizen")
+    await step(2, "off", "Heizen")
+    await step(2, "off", "Heizen")  # 6 min off, but within the defrost grace
+    await step(1, "on", "Heizen")
+    assert hass.states.get(starts).state == "1"

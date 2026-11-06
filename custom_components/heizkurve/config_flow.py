@@ -20,8 +20,10 @@ from .const import (
     CONF_ABS_MIN_FLOW,
     CONF_COMPARISON,
     CONF_COMPRESSOR,
+    CONF_DHW_VALVE,
     CONF_HEAT_METER,
     CONF_MODE,
+    CONF_MODE_DEFROST,
     CONF_MODE_DHW,
     CONF_OUTDOOR,
     CONF_OUTDOOR_FALLBACK,
@@ -31,6 +33,7 @@ from .const import (
     CONF_WEATHER,
     DEFAULT_ABS_MAX_FLOW,
     DEFAULT_ABS_MIN_FLOW,
+    DEFAULT_MODE_DEFROST,
     DEFAULT_MODE_DHW,
     DOMAIN,
 )
@@ -47,6 +50,8 @@ SOURCE_KEYS = (
     CONF_COMPRESSOR,
     CONF_MODE,
     CONF_MODE_DHW,
+    CONF_MODE_DEFROST,
+    CONF_DHW_VALVE,
     CONF_HEAT_METER,
     CONF_COMPARISON,
 )
@@ -110,6 +115,12 @@ PLANT_SCHEMA = vol.Schema(
             selector.EntitySelectorConfig(domain=["sensor", "select"])
         ),
         vol.Optional(CONF_MODE_DHW, default=DEFAULT_MODE_DHW): selector.TextSelector(),
+        vol.Optional(
+            CONF_MODE_DEFROST, default=DEFAULT_MODE_DEFROST
+        ): selector.TextSelector(),
+        vol.Optional(CONF_DHW_VALVE): selector.EntitySelector(
+            selector.EntitySelectorConfig(domain="sensor")
+        ),
         vol.Optional(CONF_HEAT_METER): selector.EntitySelector(
             selector.EntitySelectorConfig(domain="sensor", device_class="energy")
         ),

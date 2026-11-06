@@ -38,14 +38,18 @@
           "mode_entity": "Betriebsart",
           "mode_dhw_value": "Wert der Betriebsart für Warmwasser",
           "heat_meter_sensor": "Wärmemengenzähler",
-          "comparison_sensor": "Vergleichskurve"
+          "comparison_sensor": "Vergleichskurve",
+          "mode_defrost_value": "Wert der Betriebsart für Abtauen",
+          "dhw_valve_sensor": "Warmwasser-Ventil (3-Wege-Ventil)"
         },
         "data_description": {
           "absolute_min_flow": "Anlagengrenze; die Zahlen Min-/Max-Vorlauf lassen sich nur innerhalb verstellen.",
           "compressor_sensor": "Optional. Schaltet Taktsperre sowie Laufzeit- und Starts-Kennzahlen frei.",
-          "mode_entity": "Optional. Warmwasser-Läufe zählen dann nicht als Starts.",
+          "mode_entity": "Optional. Warmwasser-Läufe zählen dann nicht als Starts, Abtauvorgänge unterbrechen den Lauf nicht.",
           "heat_meter_sensor": "Optional. Für Wärme pro Tag und kWh je Heizgradtag.",
-          "comparison_sensor": "Optional. Ein anderer Vorlauf-Sensor zum Vergleich, z. B. die bisherige Heizkurve."
+          "comparison_sensor": "Optional. Ein anderer Vorlauf-Sensor zum Vergleich, z. B. die bisherige Heizkurve.",
+          "mode_defrost_value": "Während des Abtauens und 10 min danach zählt ein Wiederanlauf nicht als neuer Start.",
+          "dhw_valve_sensor": "Optional. Stellung in Prozent; über 50 gilt als Warmwasser (Rotex: sensor.hpsu_can_bpv). Ergänzt die Betriebsart, z. B. am Ende einer Warmwasserladung."
         }
       }
     },
@@ -90,14 +94,18 @@
           "mode_entity": "Betriebsart",
           "mode_dhw_value": "Wert der Betriebsart für Warmwasser",
           "heat_meter_sensor": "Wärmemengenzähler",
-          "comparison_sensor": "Vergleichskurve"
+          "comparison_sensor": "Vergleichskurve",
+          "mode_defrost_value": "Wert der Betriebsart für Abtauen",
+          "dhw_valve_sensor": "Warmwasser-Ventil (3-Wege-Ventil)"
         },
         "data_description": {
           "absolute_min_flow": "Anlagengrenze; die Zahlen Min-/Max-Vorlauf lassen sich nur innerhalb verstellen.",
           "compressor_sensor": "Optional. Schaltet Taktsperre sowie Laufzeit- und Starts-Kennzahlen frei.",
-          "mode_entity": "Optional. Warmwasser-Läufe zählen dann nicht als Starts.",
+          "mode_entity": "Optional. Warmwasser-Läufe zählen dann nicht als Starts, Abtauvorgänge unterbrechen den Lauf nicht.",
           "heat_meter_sensor": "Optional. Für Wärme pro Tag und kWh je Heizgradtag.",
-          "comparison_sensor": "Optional. Ein anderer Vorlauf-Sensor zum Vergleich, z. B. die bisherige Heizkurve."
+          "comparison_sensor": "Optional. Ein anderer Vorlauf-Sensor zum Vergleich, z. B. die bisherige Heizkurve.",
+          "mode_defrost_value": "Während des Abtauens und 10 min danach zählt ein Wiederanlauf nicht als neuer Start.",
+          "dhw_valve_sensor": "Optional. Stellung in Prozent; über 50 gilt als Warmwasser (Rotex: sensor.hpsu_can_bpv). Ergänzt die Betriebsart, z. B. am Ende einer Warmwasserladung."
         }
       }
     },

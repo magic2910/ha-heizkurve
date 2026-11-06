@@ -153,3 +153,41 @@ def test_lock_decisions():
     assert not calc.lock_should_start(starts_60min=3, locks_today=0, room=22.4, **kw)
     assert calc.lock_should_end_early(21.9, 23, 0.5)
     assert not calc.lock_should_end_early(22.1, 23, 0.5)
+
+
+def test_compressor_tracker_holds_run_during_defrost():
+    """Rotex pattern: stop, defrost with short runs, restart ~5 min later."""
+    tracker = calc.CompressorTracker()
+    t = NOW
+    m = lambda minutes: t + timedelta(minutes=minutes)  # noqa: E731
+    tracker.update(True, m(0))
+    tracker.update(False, m(60))  # stops shortly before the defrost is reported
+    tracker.update(False, m(60.5), defrost=True)
+    tracker.update(True, m(62), defrost=True)  # short defrost run
+    tracker.update(False, m(63), defrost=True)
+    tracker.update(False, m(66))  # defrost over, compressor still off
+    tracker.update(False, m(70))  # 10 min off, but within the grace time
+    assert tracker.running
+    tracker.update(True, m(71))  # restart after the defrost: same run
+    assert tracker.starts_within(m(72), timedelta(hours=2)) == 1
+    assert tracker.runtime(m(72)) == timedelta(minutes=72)
+
+    # Without a restart the run ends once the grace time is over.
+    tracker.update(False, m(100))
+    tracker.update(False, m(100.5), defrost=True)
+    tracker.update(False, m(105))
+    tracker.update(False, m(110))
+    assert tracker.running
+    tracker.update(False, m(111))
+    assert not tracker.running
+    assert tracker.runtime(m(111)) == timedelta(minutes=100)
+    tracker.update(True, m(130))
+    assert tracker.starts_within(m(131), timedelta(hours=3)) == 2
+
+
+def test_compressor_tracker_defrost_while_stopped_is_no_run():
+    tracker = calc.CompressorTracker()
+    tracker.update(False, NOW, defrost=True)
+    assert tracker.hold_until is None
+    tracker.update(True, NOW + timedelta(minutes=5))
+    assert tracker.starts_within(NOW + timedelta(minutes=6), timedelta(hours=1)) == 1
