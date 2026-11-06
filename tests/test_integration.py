@@ -426,3 +426,30 @@ async def test_defrost_and_restart_are_no_starts(
     await step(2, "off", "Heizen")  # 6 min off, but within the defrost grace
     await step(1, "on", "Heizen")
     assert hass.states.get(starts).state == "1"
+
+
+async def test_options_flow_rejects_valve_without_percent(
+    hass: HomeAssistant, full_entry
+) -> None:
+    full_entry.add_to_hass(hass)
+    await hass.config_entries.async_setup(full_entry.entry_id)
+    await hass.async_block_till_done()
+    hass.states.async_set("sensor.flow_temp", "24.2", {"unit_of_measurement": "°C"})
+    hass.states.async_set("sensor.bpv", "0.0", {"unit_of_measurement": "%"})
+
+    result = await hass.config_entries.options.async_init(full_entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_OUTDOOR: "sensor.station"}
+    )
+    result = await hass.config_entries.options.async_configure(result["flow_id"], {})
+    plant = {CONF_ABS_MIN_FLOW: 25, CONF_ABS_MAX_FLOW: 45}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**plant, CONF_DHW_VALVE: "sensor.flow_temp"}
+    )
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_DHW_VALVE: "valve_unit"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {**plant, CONF_DHW_VALVE: "sensor.bpv"}
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"][CONF_DHW_VALVE] == "sensor.bpv"

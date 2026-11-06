@@ -48,7 +48,7 @@ Der Dialog hat drei Schritte. Nur die Außentemperatur ist Pflicht. Fehlt ein op
 | PV-Prognose | nein | Helios Forecast: der Sensor "Power now" einer Anlage, z. B. `sensor.dach_pv_anlage_power_now` (Attribut `forecast` mit 15-Minuten-Werten in Watt) | kein Solarabzug |
 | Kompressorstatus | nein | Binary-Sensor der Wärmepumpe | keine Taktsperre, keine Starts und Laufzeit |
 | Betriebsart | nein | Sensor oder Select der Wärmepumpe mit eigenen Werten für Warmwasser (Standard "Warmwasserbereitung") und Abtauen (Standard "Abtauen") | Warmwasser-Läufe und Wiederanläufe nach dem Abtauen zählen als Starts |
-| Warmwasser-Ventil | nein | Stellung des 3-Wege-Ventils in Prozent, über 50 = Warmwasser | Warmwasser wird nur über die Betriebsart erkannt |
+| Warmwasser-Ventil | nein | Stellung des 3-Wege-Ventils, Sensor mit Einheit %, über 50 = Warmwasser (andere Einheiten lehnt die Einrichtung ab) | Warmwasser wird nur über die Betriebsart erkannt |
 | Wärmemengenzähler | nein | Energiesensor der Wärmepumpe oder externer Wärmemengenzähler | keine Wärme pro Tag, keine kWh je Heizgradtag |
 | Vergleichskurve | nein | jeder Vorlauf-Sensor, z. B. die Kurve der Wärmepumpe selbst | kein Differenz-Sensor |
 

@@ -11,8 +11,8 @@ from homeassistant.config_entries import (
     ConfigFlowResult,
     OptionsFlowWithReload,
 )
-from homeassistant.const import CONF_NAME
-from homeassistant.core import callback
+from homeassistant.const import ATTR_UNIT_OF_MEASUREMENT, CONF_NAME, PERCENTAGE
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import selector
 
 from .const import (
@@ -131,9 +131,14 @@ PLANT_SCHEMA = vol.Schema(
 )
 
 
-def _check_limits(user_input: dict[str, Any]) -> dict[str, str]:
+def _check_plant(hass: HomeAssistant, user_input: dict[str, Any]) -> dict[str, str]:
     if user_input[CONF_ABS_MIN_FLOW] >= user_input[CONF_ABS_MAX_FLOW]:
         return {"base": "flow_limits"}
+    # The valve must report a position in percent, not e.g. a temperature.
+    if valve := user_input.get(CONF_DHW_VALVE):
+        state = hass.states.get(valve)
+        if state is None or state.attributes.get(ATTR_UNIT_OF_MEASUREMENT) != PERCENTAGE:
+            return {CONF_DHW_VALVE: "valve_unit"}
     return {}
 
 
@@ -166,7 +171,7 @@ class HeizkurveConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _check_limits(user_input)
+            errors = _check_plant(self.hass, user_input)
             if not errors:
                 self._data.update(user_input)
                 name = self._data.pop(CONF_NAME)
@@ -219,7 +224,7 @@ class HeizkurveOptionsFlow(OptionsFlowWithReload):
     ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
-            errors = _check_limits(user_input)
+            errors = _check_plant(self.hass, user_input)
             if not errors:
                 self._data.update(user_input)
                 # A cleared optional field is missing from the input: store it
