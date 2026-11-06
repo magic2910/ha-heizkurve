@@ -67,6 +67,19 @@ blueprint:
               min: 0
               max: 59
               mode: box
+        start_delay:
+          name: Wartezeit nach dem Start
+          description: >
+            Nach einem Neustart von Home Assistant erst nach dieser Zeit schreiben.
+            Direkt nach dem Start fehlen noch Sensoren (z. B. PV-Prognose) und der
+            Sollwert schwankt kurz. 0 schreibt sofort.
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 30
+              unit_of_measurement: min
+              mode: box
     betriebsart:
       name: Heizkreis-Funktion (optional)
       collapsed: true
@@ -181,13 +194,23 @@ variables:
   heating_option: !input heating_option
   summer_option: !input summer_option
   targets: !input targets
-  active: "{{ is_state(active_switch, 'on') }}"
-  soll: "{{ states(setpoint) }}"
-  # Bei Verbindungsabbrüchen zur Wärmepumpe (unavailable/unknown) wird nichts geschrieben.
-  mode_select_ok: "{{ mode_select | length == 0 or has_value(mode_select) }}"
-  targets_ok: "{{ targets | reject('has_value') | list | length == 0 }}"
+  start_delay: !input start_delay
 
 actions:
+  # Nach dem HA-Start warten, bis alle Quellen da sind und der Sollwert ruhig ist.
+  - if:
+      - condition: template
+        value_template: "{{ trigger.id == 'start' and start_delay | float(0) > 0 }}"
+    then:
+      - delay:
+          minutes: "{{ start_delay | float(0) }}"
+  # Erst jetzt lesen, damit nach der Wartezeit die aktuellen Werte gelten.
+  - variables:
+      active: "{{ is_state(active_switch, 'on') }}"
+      soll: "{{ states(setpoint) }}"
+      # Bei Verbindungsabbrüchen zur Wärmepumpe (unavailable/unknown) wird nichts geschrieben.
+      mode_select_ok: "{{ mode_select | length == 0 or has_value(mode_select) }}"
+      targets_ok: "{{ targets | reject('has_value') | list | length == 0 }}"
   - choose:
       # Störung: Nachricht senden (schreibt nichts)
       - conditions:
